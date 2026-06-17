@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+/* ── Dark mode variant for Tailwind ─────────────────── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ══════════════════════════════════════════════════════
+   CSS Custom Properties — 运行时变量，响应 .dark 类
+   ══════════════════════════════════════════════════════ */
+:root {
+  /* 品牌色 */
+  --tw-color-primary: #5e6ad2;
+  --tw-color-primary-hover: #4f5bc5;
+  --tw-color-success: #0eb478;
+  --tw-color-warning: #f5a623;
+  --tw-color-error: #e5484d;
+
+  /* 中性色 */
+  --tw-color-bg-layout: #fbfbfc;
+  --tw-color-bg-container: #ffffff;
+  --tw-color-bg-elevated: #ffffff;
+  --tw-color-border: #e8e8ec;
+  --tw-color-border-secondary: #f0f0f2;
+
+  /* 文本色 */
+  --tw-color-text: #1a1a2e;
+  --tw-color-text-secondary: #6b6b7b;
+  --tw-color-text-tertiary: #9b9bae;
+}
+
+/* 深色主题变量覆写 */
+.dark {
+  --tw-color-primary: #7b7de6;
+  --tw-color-primary-hover: #8f91ed;
+  --tw-color-success: #2dd4a0;
+  --tw-color-warning: #f7b955;
+  --tw-color-error: #f87171;
+
+  --tw-color-bg-layout: #0d0d12;
+  --tw-color-bg-container: #16161d;
+  --tw-color-bg-elevated: #1e1e26;
+  --tw-color-border: #2a2a35;
+  --tw-color-border-secondary: #1e1e28;
+
+  --tw-color-text: #ededf0;
+  --tw-color-text-secondary: #9b9bae;
+  --tw-color-text-tertiary: #6b6b7b;
+}
+
+/* ══════════════════════════════════════════════════════
+   Tailwind v4 @theme — 通过 CSS 变量桥接，实现暗色切换
+   ══════════════════════════════════════════════════════ */
+@theme {
+  /* 语义色 — 值来自 CSS 变量，会随 .dark 切换 */
+  --color-primary: var(--tw-color-primary);
+  --color-primary-hover: var(--tw-color-primary-hover);
+  --color-success: var(--tw-color-success);
+  --color-warning: var(--tw-color-warning);
+  --color-error: var(--tw-color-error);
+  --color-info: var(--tw-color-primary);
+
+  --color-bg-layout: var(--tw-color-bg-layout);
+  --color-bg-container: var(--tw-color-bg-container);
+  --color-bg-elevated: var(--tw-color-bg-elevated);
+  --color-border: var(--tw-color-border);
+  --color-border-secondary: var(--tw-color-border-secondary);
+
+  --color-text: var(--tw-color-text);
+  --color-text-secondary: var(--tw-color-text-secondary);
+  --color-text-tertiary: var(--tw-color-text-tertiary);
+
+  /* 静态 Token — 不随主题变化 */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+}
+
+/* ══════════════════════════════════════════════════════
+   Base Styles
+   ══════════════════════════════════════════════════════ */
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--tw-color-bg-layout);
+  color: var(--tw-color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--tw-color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--tw-color-text-tertiary); }
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--tw-color-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Selection */
+::selection {
+  background: color-mix(in srgb, var(--tw-color-primary) 15%, transparent);
+  color: inherit;
+}
