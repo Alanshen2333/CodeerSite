@@ -26,7 +26,7 @@ def init_extensions(app):
     bcrypt.init_app(app)
 
     # MongoDB with lazy connect to avoid startup crash when unavailable
-    mongo_timeout = app.config.get("MONGO_SERVER_SELECTION_TIMEOUT_MS", 5000)
+    mongo_timeout = app.config.get("MONGO_SERVER_SELECTION_TIMEOUT_MS", 500)
     try:
         mongo_client = MongoClient(
             app.config["MONGO_URI"],
@@ -34,9 +34,8 @@ def init_extensions(app):
             serverSelectionTimeoutMS=mongo_timeout,
         )
         mongo_db = mongo_client.get_default_database()
-        # Test connection with short timeout, ignore if unavailable
-        if app.config.get("TESTING"):
-            mongo_client.admin.command("ping")
+        # Always test connection; if unavailable, disable MongoDB
+        mongo_client.admin.command("ping")
     except Exception as e:
         app.logger.warning("MongoDB connection failed: %s", e)
         mongo_client = None

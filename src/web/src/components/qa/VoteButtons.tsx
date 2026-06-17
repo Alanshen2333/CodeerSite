@@ -24,7 +24,7 @@ export default function VoteButtons({
   const { token } = theme.useToken();
 
   return (
-    <Space direction={vertical ? "vertical" : "horizontal"} size={0} align="center">
+    <Space orientation={vertical ? "vertical" : "horizontal"} size={0} align="center">
       <Button
         type="text"
         size={smallSize(size)}

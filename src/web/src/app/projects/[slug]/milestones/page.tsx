@@ -89,7 +89,7 @@ export default function MilestonesPage() {
 
       {showForm && (
         <Card size="small" className="mb-4">
-          <Space direction="vertical" className="w-full">
+          <Space orientation="vertical" className="w-full">
             <Input
               placeholder="里程碑名称"
               value={title}

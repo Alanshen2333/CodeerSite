@@ -167,7 +167,7 @@ export default function KanbanPage() {
           className="min-w-[200px] max-w-[220px] shrink-0"
           styles={{ body: { padding: "12px" } }}
         >
-          <Space direction="vertical" className="w-full">
+          <Space orientation="vertical" className="w-full">
             <Input
               placeholder="列名称..."
               value={newColTitle}

@@ -116,3 +116,8 @@ body {
   background: color-mix(in srgb, var(--tw-color-primary) 15%, transparent);
   color: inherit;
 }
+
+/* 深色模式 Tooltip 文字颜色修复：白底白字不可见 */
+.dark .ant-tooltip-container {
+  --ant-tooltip-overlay-color: #1a1a2e;
+}
