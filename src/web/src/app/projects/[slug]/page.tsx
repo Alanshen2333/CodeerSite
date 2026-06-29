@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Card, Row, Col, Statistic, Button, Space, Tabs } from "antd";
+import { Card, Row, Col, Statistic, Button, Space, Tabs, message } from "antd";
 import {
   BugOutlined,
   EditOutlined,
+  StarOutlined,
+  StarFilled,
 } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
-import { getProject } from "@/lib/api/projects";
+import { getProject, toggleProjectStar } from "@/lib/api/projects";
 import { getIssues } from "@/lib/api/issues";
 import type { Project, Issue } from "@/types";
 import IssueCard from "@/components/project/IssueCard";
@@ -49,6 +51,32 @@ export default function ProjectPage() {
 
   const isOwner = user?.id === project.owner_id;
 
+  const handleToggleStar = async () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    if (!project) return;
+    const prevStarred = project.starred ?? false;
+    const prevCount = project.star_count;
+    setProject({
+      ...project,
+      starred: !prevStarred,
+      star_count: prevCount + (prevStarred ? -1 : 1),
+    });
+    try {
+      const r = await toggleProjectStar(slug);
+      setProject((p) => (p ? { ...p, starred: r.starred, star_count: r.star_count } : p));
+    } catch (err: unknown) {
+      setProject((p) => (p ? { ...p, starred: prevStarred, star_count: prevCount } : p));
+      const msg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || "操作失败"
+          : "操作失败";
+      message.error(msg);
+    }
+  };
+
   return (
     <PageContainer size="wide">
       <div className="flex justify-between items-start flex-wrap gap-4 mb-4">
@@ -59,6 +87,12 @@ export default function ProjectPage() {
           )}
         </div>
         <Space>
+          <Button
+            icon={project.starred ? <StarFilled /> : <StarOutlined />}
+            onClick={handleToggleStar}
+          >
+            {project.star_count}
+          </Button>
           {isOwner && (
             <Button icon={<EditOutlined />} onClick={() => router.push(`/projects/${slug}/settings`)}>
               设置

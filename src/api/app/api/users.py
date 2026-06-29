@@ -12,12 +12,13 @@ users_bp = Blueprint("users", __name__)
 
 @users_bp.route("", methods=["GET"])
 def list_users():
-    """List users sorted by reputation."""
+    """List users sorted by reputation. 支持 q 搜索 username/display_name。"""
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
     per_page = min(per_page, 50)
+    q = (request.args.get("q") or "").strip() or None
 
-    users = UserService.get_users(page=page, per_page=per_page)
+    users = UserService.get_users(page=page, per_page=per_page, q=q)
     return jsonify(
         users=[u.to_public_dict() for u in users.items],
         total=users.total,

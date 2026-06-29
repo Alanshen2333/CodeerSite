@@ -7,10 +7,11 @@ from app.models.comment import Comment
 from app.models.bookmark import Bookmark
 from app.models.project import Project
 from app.models.project_member import ProjectMember
+from app.models.star import Star
 from app.models.issue import Issue
 from app.models.milestone import Milestone
 from app.models.kanban_column import KanbanColumn
 from app.models.kanban_card import KanbanCard
 
 __all__ = ["User", "Tag", "Question", "Answer", "Vote", "Comment", "Bookmark",
-           "Project", "ProjectMember", "Issue", "Milestone", "KanbanColumn", "KanbanCard"]
+           "Project", "ProjectMember", "Star", "Issue", "Milestone", "KanbanColumn", "KanbanCard"]

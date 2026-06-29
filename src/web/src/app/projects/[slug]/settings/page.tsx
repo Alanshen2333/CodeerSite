@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Input, Button, Card, Form, Radio, Space, message, Popconfirm, Tag } from "antd";
+import { Input, Button, Card, Form, Radio, Select, Space, message, Popconfirm, Tag } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
 import {
@@ -11,7 +11,9 @@ import {
   deleteProject,
   getMembers,
   removeMember,
+  addMember,
 } from "@/lib/api/projects";
+import { searchUsers } from "@/lib/api/users";
 import type { Project, ProjectMember } from "@/types";
 import PageContainer from "@/components/layout/PageContainer";
 import LoadingState from "@/components/ui/LoadingState";
@@ -39,6 +41,11 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
+  const [newRole, setNewRole] = useState<"admin" | "member">("member");
+  const [adding, setAdding] = useState(false);
 
   const load = async () => {
     try {
@@ -128,6 +135,50 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSearchUser = async (val: string) => {
+    if (!val.trim()) {
+      setUserOptions([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      const r = await searchUsers(val.trim(), 10);
+      const memberIds = new Set(members.map((m) => m.user_id));
+      setUserOptions(
+        r.users
+          .filter((u) => !memberIds.has(u.id) && u.id !== project?.owner_id)
+          .map((u) => ({
+            value: u.id,
+            label: `${u.display_name || u.username} (@${u.username})`,
+          })),
+      );
+    } catch {
+      setUserOptions([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!selectedUserId) return;
+    setAdding(true);
+    try {
+      await addMember(slug, selectedUserId, newRole);
+      message.success("已添加成员");
+      setSelectedUserId(undefined);
+      setUserOptions([]);
+      await load();
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || "添加失败"
+          : "添加失败";
+      message.error(msg);
+    } finally {
+      setAdding(false);
+    }
+  };
+
   return (
     <PageContainer size="narrow">
       <h2 className="text-xl font-semibold text-text mb-6">项目设置</h2>
@@ -164,6 +215,38 @@ export default function SettingsPage() {
       </Card>
 
       <Card title="成员" className="mb-4">
+        <div className="flex gap-2 mb-4 pb-4 border-b border-border">
+          <Select
+            showSearch
+            allowClear
+            placeholder="搜索用户名或昵称..."
+            filterOption={false}
+            onSearch={handleSearchUser}
+            onChange={(v) => setSelectedUserId(v as string | undefined)}
+            value={selectedUserId}
+            loading={searching}
+            notFoundContent={searching ? "搜索中..." : "输入用户名搜索"}
+            options={userOptions}
+            className="flex-1 min-w-0"
+          />
+          <Select
+            value={newRole}
+            onChange={(v) => setNewRole(v as "admin" | "member")}
+            options={[
+              { value: "member", label: "成员" },
+              { value: "admin", label: "管理员" },
+            ]}
+            className="w-[110px] shrink-0"
+          />
+          <Button
+            type="primary"
+            loading={adding}
+            onClick={handleAddMember}
+            disabled={!selectedUserId}
+          >
+            添加
+          </Button>
+        </div>
         {members.length === 0 ? (
           <EmptyState description="暂无成员" />
         ) : (

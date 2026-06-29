@@ -44,3 +44,12 @@ export async function addMember(slug: string, userId: string, role?: string): Pr
 export async function removeMember(slug: string, userId: string): Promise<void> {
   await api.delete(`/projects/${slug}/members/${userId}`);
 }
+
+export async function toggleProjectStar(
+  slug: string,
+): Promise<{ starred: boolean; star_count: number }> {
+  const res = await api.post<{ starred: boolean; star_count: number }>(
+    `/projects/${slug}/star`,
+  );
+  return res.data;
+}

@@ -6,8 +6,10 @@ import { Space, Button, Select } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
 import { getIssues } from "@/lib/api/issues";
-import type { Issue } from "@/types";
+import { searchTags } from "@/lib/api/tags";
+import type { Issue, Tag } from "@/types";
 import IssueCard from "@/components/project/IssueCard";
+import TagBadge from "@/components/qa/TagBadge";
 import Link from "next/link";
 import PageContainer from "@/components/layout/PageContainer";
 import LoadingState from "@/components/ui/LoadingState";
@@ -24,12 +26,15 @@ export default function IssueListPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<string | undefined>();
   const [priority, setPriority] = useState<string | undefined>();
+  const [tagId, setTagId] = useState<string | undefined>();
+  const [tagOptions, setTagOptions] = useState<Tag[]>([]);
+  const [tagSearching, setTagSearching] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetch = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await getIssues(slug, { page, per_page: 20, status, priority });
+      const r = await getIssues(slug, { page, per_page: 20, status, priority, tag_id: tagId });
       setIssues(r.issues);
       setTotal(r.total);
     } catch {
@@ -37,11 +42,26 @@ export default function IssueListPage() {
     } finally {
       setLoading(false);
     }
-  }, [slug, page, status, priority]);
+  }, [slug, page, status, priority, tagId]);
 
   useEffect(() => {
     fetch();
   }, [fetch]);
+
+  const handleSearchTag = async (q: string) => {
+    if (!q || q.length < 1) {
+      setTagOptions([]);
+      return;
+    }
+    setTagSearching(true);
+    try {
+      setTagOptions(await searchTags(q));
+    } catch {
+      setTagOptions([]);
+    } finally {
+      setTagSearching(false);
+    }
+  };
 
   return (
     <PageContainer size="wide">
@@ -74,6 +94,25 @@ export default function IssueListPage() {
             options={Object.entries(priorityLabel).map(([value, label]) => ({
               value,
               label,
+            }))}
+          />
+          <Select
+            placeholder="标签"
+            allowClear
+            showSearch
+            className="w-[160px]"
+            value={tagId}
+            onChange={(v) => {
+              setTagId(v);
+              setPage(1);
+            }}
+            onSearch={handleSearchTag}
+            loading={tagSearching}
+            filterOption={false}
+            notFoundContent={null}
+            options={tagOptions.map((t) => ({
+              value: t.id,
+              label: <TagBadge tag={t} clickable={false} />,
             }))}
           />
           {user && (

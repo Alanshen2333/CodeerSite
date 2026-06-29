@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import type { Issue } from "@/types";
 import { priorityColor, priorityLabel, issueStatusColor, issueStatusLabel } from "@/styles/constants";
+import TagBadge from "@/components/qa/TagBadge";
 
 const { Text } = Typography;
 
@@ -39,6 +40,9 @@ export default function IssueCard({ issue, slug }: Props) {
             <Tag color={priorityColor[issue.priority]}>
               {priorityLabel[issue.priority]}
             </Tag>
+            {issue.tags?.map((t) => (
+              <TagBadge key={t.id} tag={t} clickable={false} />
+            ))}
             {issue.assignee && (
               <Text type="secondary" className="!text-xs">
                 <UserOutlined /> {issue.assignee.display_name || issue.assignee.username}

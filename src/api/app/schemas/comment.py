@@ -14,7 +14,7 @@ class CommentSchema(Schema):
 
 class CommentCreateSchema(Schema):
     body = fields.Str(required=True, validate=validate.Length(min=1, max=1000))
-    target_type = fields.Str(required=True, validate=validate.OneOf(["question", "answer"]))
+    target_type = fields.Str(required=True, validate=validate.OneOf(["question", "answer", "issue"]))
     target_id = fields.Str(required=True)
 
 

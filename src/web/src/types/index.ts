@@ -109,7 +109,7 @@ export interface CommentListResult {
 
 export interface CommentCreateInput {
   body: string;
-  target_type: "question" | "answer";
+  target_type: "question" | "answer" | "issue";
   target_id: string;
 }
 
@@ -146,6 +146,7 @@ export interface Project {
   owner: PublicUser | null;
   visibility: "public" | "private";
   star_count: number;
+  starred?: boolean;
   members_count: number;
   issues_count: number;
   created_at: string;
@@ -183,6 +184,7 @@ export interface Issue {
   priority: "low" | "medium" | "high" | "critical";
   milestone_id: string | null;
   milestone: Milestone | null;
+  tags?: Tag[];
   created_at: string;
   updated_at: string;
 }

@@ -9,6 +9,7 @@ projects_bp = Blueprint("projects", __name__)
 
 
 @projects_bp.route("", methods=["GET"])
+@jwt_required(optional=True)
 def list_projects():
     """List projects."""
     page = request.args.get("page", 1, type=int)
@@ -17,8 +18,18 @@ def list_projects():
     visibility = request.args.get("visibility")
 
     result = ProjectService.get_projects(page=page, per_page=per_page, sort=sort, visibility=visibility)
+    user = get_current_user()  # optional=True：未登录为 None
+    starred_ids = (
+        ProjectService.get_starred_project_ids(user.id, [p.id for p in result.items])
+        if user else set()
+    )
+    projects = []
+    for p in result.items:
+        d = p.to_dict()
+        d["starred"] = p.id in starred_ids
+        projects.append(d)
     return jsonify(
-        projects=[p.to_dict() for p in result.items],
+        projects=projects,
         total=result.total,
         page=result.page,
         pages=result.pages,
@@ -45,12 +56,16 @@ def create_project():
 
 
 @projects_bp.route("/<slug>", methods=["GET"])
+@jwt_required(optional=True)
 def get_project(slug):
     """Get project by slug."""
     project = ProjectService.get_project(slug=slug)
     if not project:
         return jsonify(error="Not Found", message="Project not found."), 404
-    return jsonify(project=project.to_dict()), 200
+    user = get_current_user()
+    data = project.to_dict()
+    data["starred"] = ProjectService.is_starred(project.id, user.id) if user else False
+    return jsonify(project=data), 200
 
 
 @projects_bp.route("/<slug>", methods=["PATCH"])
@@ -183,9 +198,10 @@ def update_member_role(slug, user_id):
 @projects_bp.route("/<slug>/star", methods=["POST"])
 @jwt_required()
 def star_project(slug):
-    """Star a project (simplified)."""
+    """切换项目的 star。"""
+    user = get_current_user()
     project = ProjectService.get_project(slug=slug)
     if not project:
         return jsonify(error="Not Found", message="Project not found."), 404
-    count = ProjectService.toggle_star(project)
-    return jsonify(star_count=count), 200
+    starred = ProjectService.toggle_star(project, user.id)
+    return jsonify(starred=starred, star_count=project.star_count), 200

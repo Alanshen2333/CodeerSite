@@ -27,6 +27,7 @@ def list_issues(slug):
     priority = request.args.get("priority")
     assignee_id = request.args.get("assignee_id")
     milestone_id = request.args.get("milestone_id")
+    tag_id = request.args.get("tag_id")
     sort = request.args.get("sort", "newest")
 
     # milestone_id can be "none" to filter for issues without milestone
@@ -36,7 +37,7 @@ def list_issues(slug):
     result = IssueService.get_issues(
         project_id=project.id, page=page, per_page=per_page,
         status=status, priority=priority, assignee_id=assignee_id,
-        milestone_id=milestone_id, sort=sort,
+        milestone_id=milestone_id, tag_id=tag_id, sort=sort,
     )
     stats = IssueService.get_issue_stats(project.id)
     return jsonify(
@@ -73,6 +74,7 @@ def create_issue(slug):
         assignee_id=data.get("assignee_id"),
         priority=data.get("priority", "medium"),
         milestone_id=data.get("milestone_id"),
+        tag_ids=data.get("tag_ids"),
     )
     return jsonify(issue=issue.to_dict()), 201
 

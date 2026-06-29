@@ -2,6 +2,13 @@ import uuid
 from datetime import datetime, timezone
 from app.extensions import db
 
+# Many-to-many association table for issue <-> tag
+issue_tags = db.Table(
+    "issue_tags",
+    db.Column("issue_id", db.String(36), db.ForeignKey("issues.id", ondelete="CASCADE"), primary_key=True),
+    db.Column("tag_id", db.String(36), db.ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+)
+
 
 class Issue(db.Model):
     __tablename__ = "issues"
@@ -36,6 +43,7 @@ class Issue(db.Model):
     author = db.relationship("User", foreign_keys=[author_id], backref="authored_issues")
     assignee = db.relationship("User", foreign_keys=[assignee_id], backref="assigned_issues")
     milestone = db.relationship("Milestone", backref="issues")
+    tags = db.relationship("Tag", secondary=issue_tags, backref="issues", lazy="joined")
 
     def to_dict(self):
         return {
@@ -53,6 +61,7 @@ class Issue(db.Model):
             "priority": self.priority,
             "milestone_id": self.milestone_id,
             "milestone": self.milestone.to_dict() if self.milestone else None,
+            "tags": [t.to_dict() for t in self.tags] if self.tags else [],
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

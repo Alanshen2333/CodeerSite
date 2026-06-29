@@ -10,6 +10,7 @@ import { getMilestones } from "@/lib/api/milestones";
 import { priorityLabel } from "@/styles/constants";
 import type { ProjectMember, Milestone } from "@/types";
 import PageContainer from "@/components/layout/PageContainer";
+import TagSelect from "@/components/qa/TagSelect";
 
 const { TextArea } = Input;
 
@@ -19,6 +20,7 @@ interface FormValues {
   priority: string;
   assignee_id?: string;
   milestone_id?: string;
+  tag_ids?: string[];
 }
 
 export default function NewIssuePage() {
@@ -54,6 +56,7 @@ export default function NewIssuePage() {
         priority: values.priority,
         assignee_id: values.assignee_id,
         milestone_id: values.milestone_id,
+        tag_ids: values.tag_ids,
       });
       message.success("Issue 创建成功");
       router.push(`/projects/${slug}/issues/${r.issue.issue_number}`);
@@ -112,6 +115,9 @@ export default function NewIssuePage() {
               options={milestoneOptions}
               notFoundContent="暂无里程碑"
             />
+          </Form.Item>
+          <Form.Item name="tag_ids" label="标签">
+            <TagSelect />
           </Form.Item>
           <Form.Item>
             <Space>

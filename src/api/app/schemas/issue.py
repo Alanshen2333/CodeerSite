@@ -7,6 +7,7 @@ class IssueCreateSchema(Schema):
     assignee_id = fields.Str()
     priority = fields.Str(validate=validate.OneOf(["low", "medium", "high", "critical"]))
     milestone_id = fields.Str()
+    tag_ids = fields.List(fields.Str())
 
 
 class IssueUpdateSchema(Schema):
@@ -16,3 +17,4 @@ class IssueUpdateSchema(Schema):
     status = fields.Str(validate=validate.OneOf(["open", "in_progress", "closed"]))
     priority = fields.Str(validate=validate.OneOf(["low", "medium", "high", "critical"]))
     milestone_id = fields.Str(allow_none=True)
+    tag_ids = fields.List(fields.Str())

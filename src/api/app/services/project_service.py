@@ -3,6 +3,7 @@ from typing import Optional, List
 from app.extensions import db
 from app.models.project import Project
 from app.models.project_member import ProjectMember
+from app.models.star import Star
 from app.models.user import User
 from app.services.search_service import SearchService
 
@@ -137,12 +138,47 @@ class ProjectService:
 
     # -- Star --
     @staticmethod
-    def toggle_star(project: Project):
-        # star_count is a simple counter, real implementation would have a stars table
-        # For simplicity, we just toggle a count (could be abused, proper impl needs a table)
-        project.star_count = max(0, project.star_count)
+    def toggle_star(project: Project, user_id: str) -> bool:
+        """切换 star。返回 True 表示已 star，False 表示已取消。
+
+        真实去重靠 project_stars 表的 (user_id, project_id) 唯一约束；
+        star_count 为反范式缓存，随 star 增删同步。
+        """
+        existing = Star.query.filter_by(user_id=user_id, project_id=project.id).first()
+        if existing:
+            db.session.delete(existing)
+            project.star_count = max(0, project.star_count - 1)
+            db.session.commit()
+            ProjectService._index_to_search(project)
+            return False
+
+        star = Star(user_id=user_id, project_id=project.id)
+        db.session.add(star)
+        project.star_count = project.star_count + 1
         db.session.commit()
-        return project.star_count
+        ProjectService._index_to_search(project)
+        return True
+
+    @staticmethod
+    def is_starred(project_id: str, user_id: str) -> bool:
+        return (
+            db.session.query(Star.id)
+            .filter_by(user_id=user_id, project_id=project_id)
+            .first()
+            is not None
+        )
+
+    @staticmethod
+    def get_starred_project_ids(user_id: str, project_ids: list) -> set:
+        """返回 project_ids 中当前用户已 star 的子集（用于列表页批量标注）。"""
+        if not user_id or not project_ids:
+            return set()
+        rows = (
+            db.session.query(Star.project_id)
+            .filter(Star.user_id == user_id, Star.project_id.in_(project_ids))
+            .all()
+        )
+        return {r[0] for r in rows}
 
     @staticmethod
     def _index_to_search(project: Project):

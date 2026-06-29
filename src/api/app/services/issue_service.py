@@ -3,6 +3,7 @@ import mistune
 from app.extensions import db
 from app.models.issue import Issue
 from app.models.project import Project
+from app.models.tag import Tag
 from app.services.search_service import SearchService
 from app.services.notification_service import NotificationService
 
@@ -15,6 +16,7 @@ class IssueService:
         project_id: str, author_id: str, title: str,
         body: str = None, assignee_id: str = None,
         priority: str = "medium", milestone_id: str = None,
+        tag_ids: list = None,
     ) -> Issue:
         # Generate next issue_number for this project
         max_num = (
@@ -39,6 +41,11 @@ class IssueService:
         db.session.add(issue)
         db.session.commit()
         IssueService._index_to_search(issue)
+
+        # 关联标签（复用全局 Tag，多对多）
+        if tag_ids:
+            issue.tags = Tag.query.filter(Tag.id.in_(tag_ids)).all()
+            db.session.commit()
 
         # Notify assignee if one was set
         if assignee_id and assignee_id != author_id:
@@ -67,6 +74,11 @@ class IssueService:
 
         if "body" in kwargs and kwargs["body"] is not None:
             issue.body_html = _md_renderer(kwargs["body"])
+
+        # 标签更新（整体替换；空列表清空）
+        if "tag_ids" in kwargs:
+            tag_ids = kwargs.get("tag_ids")
+            issue.tags = Tag.query.filter(Tag.id.in_(tag_ids)).all() if tag_ids else []
 
         db.session.commit()
         IssueService._index_to_search(issue)
@@ -108,7 +120,7 @@ class IssueService:
         page: int = 1, per_page: int = 20,
         status: str = None, priority: str = None,
         assignee_id: str = None, milestone_id: str = None,
-        sort: str = "newest",
+        tag_id: str = None, sort: str = "newest",
     ):
         query = Issue.query.filter_by(project_id=project_id)
 
@@ -120,6 +132,8 @@ class IssueService:
             query = query.filter_by(assignee_id=assignee_id)
         if milestone_id is not None:
             query = query.filter_by(milestone_id=milestone_id)
+        if tag_id:
+            query = query.join(Issue.tags).filter(Tag.id == tag_id)
 
         if sort == "oldest":
             query = query.order_by(Issue.created_at.asc())

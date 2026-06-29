@@ -8,8 +8,11 @@ import {
 } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
 import { getIssue, updateIssue, deleteIssue } from "@/lib/api/issues";
-import type { Issue } from "@/types";
+import { getComments, createComment, deleteComment } from "@/lib/api/comments";
+import type { Issue, Comment } from "@/types";
 import MarkdownRenderer from "@/components/qa/MarkdownRenderer";
+import CommentList from "@/components/qa/CommentList";
+import CommentForm from "@/components/qa/CommentForm";
 import Link from "next/link";
 import PageContainer from "@/components/layout/PageContainer";
 import LoadingState from "@/components/ui/LoadingState";
@@ -33,12 +36,16 @@ export default function IssueDetailPage() {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
+  const [comments, setComments] = useState<Comment[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
         const r = await getIssue(slug, Number(num));
         setIssue(r.issue);
+        // 加载 issue 评论（多态 target_type=issue）
+        const cRes = await getComments({ target_type: "issue", target_id: r.issue.id });
+        setComments(cRes.comments);
       } catch {
         setIssue(null);
       } finally {
@@ -78,6 +85,26 @@ export default function IssueDetailPage() {
       message.success("已保存");
     } catch {
       message.error("保存失败");
+    }
+  };
+
+  const handleAddComment = async (body: string) => {
+    if (!issue) return;
+    try {
+      await createComment({ body, target_type: "issue", target_id: issue.id });
+      const cRes = await getComments({ target_type: "issue", target_id: issue.id });
+      setComments(cRes.comments);
+    } catch {
+      message.error("评论失败");
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await deleteComment(commentId);
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+    } catch {
+      message.error("删除评论失败");
     }
   };
 
@@ -157,6 +184,22 @@ export default function IssueDetailPage() {
               <MarkdownRenderer html={issue.body_html} />
             ) : (
               <Text type="secondary">暂无描述</Text>
+            )}
+          </Card>
+
+          {/* 评论 */}
+          <Card title="评论" className="mt-4">
+            <CommentList comments={comments} onDelete={handleDeleteComment} />
+            {user ? (
+              <CommentForm
+                targetType="issue"
+                targetId={issue.id}
+                onSubmit={handleAddComment}
+              />
+            ) : (
+              <Text type="secondary" className="!text-xs">
+                <Link href="/login">登录</Link>后可评论
+              </Text>
             )}
           </Card>
         </>
