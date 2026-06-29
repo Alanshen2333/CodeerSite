@@ -155,4 +155,21 @@ uv run pytest
 - [x] 阶段二：Q&A 核心
 - [x] 阶段三：前端设计重构与统一
 - [x] 阶段四：搜索 + 通知 + 用户主页
-- [ ] 阶段五：优化增强（徽章管理面板已起步）
+- [ ] 阶段五：优化增强
+  - [x] 看板拖拽收尾 + issues/new 与 settings 表单页
+  - [x] 优先闭环四项（均带后端测试）：Star 真实化、加成员、Issue 评论流、Labels 关联 Issue
+  - [x] 徽章管理面板（已起步）
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues，使用 `gh` CLI 操作；外部 PR 不作为 triage 来源。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用默认标签名：`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单上下文布局：根目录 `CONTEXT.md` + `docs/adr/`。详见 `docs/agents/domain.md`。
