@@ -32,3 +32,7 @@ export async function moveCard(slug: string, cardId: string, data: {
   const res = await api.post<{ card: KanbanCard }>(`/projects/${slug}/kanban/cards/${cardId}/move`, data);
   return res.data;
 }
+
+export async function reorderColumns(slug: string, columnIds: string[]): Promise<void> {
+  await api.post(`/projects/${slug}/kanban/columns/reorder`, { column_ids: columnIds });
+}
