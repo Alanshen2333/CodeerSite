@@ -52,3 +52,14 @@ export const milestoneStatusLabel: Record<string, string> = {
   open: "进行中",
   closed: "已关闭",
 } as const;
+
+/** 里程碑完成百分比（0–100），open/closed 均为 0 时返回 0。 */
+export function milestonePercent(open: number, closed: number): number {
+  const total = open + closed;
+  return total > 0 ? Math.round((closed / total) * 100) : 0;
+}
+
+/** 里程碑进度条 format 文案，如「3/5 已关闭」。 */
+export function milestoneProgressText(open: number, closed: number): string {
+  return `${closed}/${open + closed} 已关闭`;
+}
