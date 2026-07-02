@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_current_user
 from marshmallow import ValidationError
-from app.schemas.issue import IssueCreateSchema, IssueUpdateSchema
+from app.schemas.issue import IssueCreateSchema, IssueUpdateSchema, TimeEntryCreateSchema
 from app.services.issue_service import IssueService
 from app.services.project_service import ProjectService
 
@@ -75,6 +75,7 @@ def create_issue(slug):
         priority=data.get("priority", "medium"),
         milestone_id=data.get("milestone_id"),
         tag_ids=data.get("tag_ids"),
+        time_estimate=data.get("time_estimate"),
     )
     return jsonify(issue=issue.to_dict()), 201
 
@@ -112,10 +113,68 @@ def update_issue(slug, issue_number):
     except ValidationError as e:
         return jsonify(error="Validation Error", messages=e.messages), 422
 
-    # Remove None values to allow partial update
-    update_data = {k: v for k, v in data.items() if v is not None}
+    # 部分更新：剔除未提供字段（None）。但 time_estimate / assignee_id /
+    # milestone_id 的 allow_none 字段需保留显式 None（用于清空）。
+    allow_none_fields = {"time_estimate", "assignee_id", "milestone_id"}
+    update_data = {
+        k: v for k, v in data.items()
+        if v is not None or k in allow_none_fields
+    }
     issue = IssueService.update_issue(issue, **update_data)
     return jsonify(issue=issue.to_dict()), 200
+
+
+@issues_bp.route("/projects/<slug>/issues/<int:issue_number>/time-entries", methods=["GET"])
+@jwt_required()
+def list_time_entries(slug, issue_number):
+    """列出某 Issue 的耗时条目。需项目成员。"""
+    user = get_current_user()
+    project, err = _get_project_or_404(slug)
+    if err: return err
+
+    issue = IssueService.get_issue(project_id=project.id, issue_number=issue_number)
+    if not issue:
+        return jsonify(error="Not Found", message="Issue not found."), 404
+
+    role = ProjectService.get_user_role(project.id, user.id)
+    if not role:
+        return jsonify(error="Forbidden", message="You must be a project member."), 403
+
+    entries = IssueService.get_time_entries(issue)
+    return jsonify(
+        time_entries=[e.to_dict() for e in entries],
+        total=len(entries),
+    ), 200
+
+
+@issues_bp.route("/projects/<slug>/issues/<int:issue_number>/time-entries", methods=["POST"])
+@jwt_required()
+def create_time_entry(slug, issue_number):
+    """记录一段耗时。需项目成员。"""
+    user = get_current_user()
+    project, err = _get_project_or_404(slug)
+    if err: return err
+
+    issue = IssueService.get_issue(project_id=project.id, issue_number=issue_number)
+    if not issue:
+        return jsonify(error="Not Found", message="Issue not found."), 404
+
+    role = ProjectService.get_user_role(project.id, user.id)
+    if not role:
+        return jsonify(error="Forbidden", message="You must be a project member."), 403
+
+    try:
+        data = TimeEntryCreateSchema().load(request.get_json() or {})
+    except ValidationError as e:
+        return jsonify(error="Validation Error", messages=e.messages), 422
+
+    entry = IssueService.add_time_entry(
+        issue=issue,
+        user_id=user.id,
+        seconds=data["seconds"],
+        note=data.get("note"),
+    )
+    return jsonify(entry=entry.to_dict(), issue=issue.to_dict()), 201
 
 
 @issues_bp.route("/projects/<slug>/issues/<int:issue_number>", methods=["DELETE"])

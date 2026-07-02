@@ -1,7 +1,7 @@
 from typing import Optional
 import mistune
 from app.extensions import db
-from app.models.issue import Issue
+from app.models.issue import Issue, TimeEntry
 from app.models.project import Project
 from app.models.tag import Tag
 from app.services.search_service import SearchService
@@ -16,7 +16,7 @@ class IssueService:
         project_id: str, author_id: str, title: str,
         body: str = None, assignee_id: str = None,
         priority: str = "medium", milestone_id: str = None,
-        tag_ids: list = None,
+        tag_ids: list = None, time_estimate: int = None,
     ) -> Issue:
         # Generate next issue_number for this project
         max_num = (
@@ -37,6 +37,7 @@ class IssueService:
             assignee_id=assignee_id,
             priority=priority,
             milestone_id=milestone_id,
+            time_estimate=time_estimate,
         )
         db.session.add(issue)
         db.session.commit()
@@ -68,7 +69,8 @@ class IssueService:
     @staticmethod
     def update_issue(issue: Issue, **kwargs) -> Issue:
         old_assignee_id = issue.assignee_id
-        for field in ("title", "body", "assignee_id", "status", "priority", "milestone_id"):
+        for field in ("title", "body", "assignee_id", "status", "priority",
+                      "milestone_id", "time_estimate"):
             if field in kwargs and kwargs[field] is not None or field in kwargs:
                 setattr(issue, field, kwargs[field])
 
@@ -173,3 +175,30 @@ class IssueService:
     @staticmethod
     def _remove_from_search(issue: Issue):
         SearchService.remove_document(issue.id, "issue")
+
+    # ── 时间跟踪 ──────────────────────────────────────────
+
+    @staticmethod
+    def add_time_entry(issue: Issue, user_id: str, seconds: int,
+                       note: str = None) -> TimeEntry:
+        """记录一段耗时：创建 TimeEntry 并同步累加 Issue.time_spent 反范式缓存。"""
+        entry = TimeEntry(
+            issue_id=issue.id,
+            user_id=user_id,
+            seconds=seconds,
+            note=note,
+        )
+        db.session.add(entry)
+        issue.time_spent = (issue.time_spent or 0) + seconds
+        db.session.commit()
+        return entry
+
+    @staticmethod
+    def get_time_entries(issue: Issue) -> list[TimeEntry]:
+        """返回某 Issue 的全部耗时条目（按时间倒序）。"""
+        return (
+            TimeEntry.query
+            .filter_by(issue_id=issue.id)
+            .order_by(TimeEntry.created_at.desc())
+            .all()
+        )
