@@ -34,8 +34,11 @@ echo -e "${GREEN}  ✓ 迁移完成${NC}"
 echo -e "\n${YELLOW}[3/3] 启动服务...${NC}"
 
 # Flask (background)
+# 注意：macOS 的"隔空播放接收器"(ControlCenter) 默认占用 5000 端口（IPv6 ::1），
+# 用 localhost:5000 会被它拦截并返回 403，故后端改用 5100。
+# 前端 next.config.ts 的 rewrite 需同步指向同一端口。
 cd "$ROOT/src/api"
-uv run flask run --debug --port 5000 &
+uv run flask run --debug --port 5100 &
 FLASK_PID=$!
 
 # Next.js (background)
@@ -54,7 +57,7 @@ trap cleanup EXIT INT TERM
 echo ""
 echo -e "${BLUE}========================================${NC}"
 echo -e "${GREEN}  开发环境已就绪！${NC}"
-echo -e "  ${BLUE}后端 API :${NC} http://localhost:5000/api"
+echo -e "  ${BLUE}后端 API :${NC} http://localhost:5100/api"
 echo -e "  ${BLUE}前端页面 :${NC} http://localhost:3000"
 echo -e "  ${RED}按 Ctrl+C 停止${NC}"
 echo -e "${BLUE}========================================${NC}"
