@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Input, Button, Card, Form, Space, message } from "antd";
+import { Input, Button, Card, Form, Space } from "antd";
+import { message } from "@/lib/message";
 import { useAuth } from "@/providers/AuthProvider";
 import { createQuestion } from "@/lib/api/questions";
 import TagSelect from "@/components/qa/TagSelect";

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Input, Button, Card, Form, Select, Space, message } from "antd";
+import { Input, Button, Card, Form, Select, Space } from "antd";
+import { message } from "@/lib/message";
 import { useAuth } from "@/providers/AuthProvider";
 import { createIssue } from "@/lib/api/issues";
 import { getMembers } from "@/lib/api/projects";

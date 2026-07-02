@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { App } from "antd";
 import ThemeProvider from "@/providers/ThemeProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import Navbar from "@/components/layout/Navbar";
+import MessageBridge from "@/components/MessageBridge";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -37,10 +39,13 @@ export default function RootLayout({
       <body className="min-h-screen bg-bg-layout text-text antialiased">
         <AntdRegistry>
           <ThemeProvider>
-            <AuthProvider>
-              <Navbar />
-              <main className="min-h-[calc(100vh-56px)]">{children}</main>
-            </AuthProvider>
+            <App>
+              <MessageBridge />
+              <AuthProvider>
+                <Navbar />
+                <main className="min-h-[calc(100vh-56px)]">{children}</main>
+              </AuthProvider>
+            </App>
           </ThemeProvider>
         </AntdRegistry>
       </body>

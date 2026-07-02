@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Input, Button, Card, Form, Radio, Select, Space, message, Popconfirm, Tag } from "antd";
+import { Input, Button, Card, Form, Radio, Select, Space, Popconfirm, Tag } from "antd";
+import { message } from "@/lib/message";
 import { DeleteOutlined } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
 import {

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Input, Button, Card, Form, Space, Radio, message } from "antd";
+import { Input, Button, Card, Form, Space, Radio } from "antd";
+import { message } from "@/lib/message";
 import { useAuth } from "@/providers/AuthProvider";
 import { createProject } from "@/lib/api/projects";
 import PageContainer from "@/components/layout/PageContainer";

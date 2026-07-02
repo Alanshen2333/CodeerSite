@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Card, Row, Col, Statistic, Button, Space, Tabs, message } from "antd";
+import { Card, Row, Col, Statistic, Button, Space, Tabs } from "antd";
+import { message } from "@/lib/message";
 import {
   BugOutlined,
   EditOutlined,

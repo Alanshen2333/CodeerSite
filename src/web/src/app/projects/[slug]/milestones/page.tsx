@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Card, Button, Space, Input, DatePicker, Progress, Typography, message, Popconfirm } from "antd";
+import { Card, Button, Space, Input, DatePicker, Progress, Typography, Popconfirm } from "antd";
+import { message } from "@/lib/message";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
 import { getMilestones, createMilestone, updateMilestone, deleteMilestone } from "@/lib/api/milestones";

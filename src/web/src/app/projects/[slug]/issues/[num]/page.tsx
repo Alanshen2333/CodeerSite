@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Card, Space, Button, Tag, Select, Input, Typography, message } from "antd";
+import { Card, Space, Button, Tag, Select, Input, Typography } from "antd";
+import { message } from "@/lib/message";
 import {
   ArrowLeftOutlined, DeleteOutlined, UserOutlined, ClockCircleOutlined,
 } from "@ant-design/icons";

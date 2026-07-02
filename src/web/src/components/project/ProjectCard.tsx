@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type MouseEvent } from "react";
-import { Card, Typography, Space, Tag, message } from "antd";
+import { Card, Typography, Space, Tag } from "antd";
+import { message } from "@/lib/message";
 import { TeamOutlined, BugOutlined, StarOutlined, StarFilled } from "@ant-design/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

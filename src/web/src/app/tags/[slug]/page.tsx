@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { message } from "antd";
+import { message } from "@/lib/message";
 import { getTag } from "@/lib/api/tags";
 import { getQuestions } from "@/lib/api/questions";
 import { vote } from "@/lib/api/votes";

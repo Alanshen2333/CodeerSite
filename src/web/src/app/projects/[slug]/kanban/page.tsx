@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Button, Space, Input, Typography, message, Popconfirm } from "antd";
+import { Button, Space, Input, Typography, Popconfirm } from "antd";
+import { message } from "@/lib/message";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import {

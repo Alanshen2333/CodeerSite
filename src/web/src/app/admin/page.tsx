@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense, useState, useEffect, useCallback } from "react";
-import { Card, Table, Button, Tag, Space, Statistic, Row, Col, Popconfirm, message, Select } from "antd";
+import { Card, Table, Button, Tag, Space, Statistic, Row, Col, Popconfirm, Select } from "antd";
+import { message } from "@/lib/message";
 import { UserOutlined, QuestionCircleOutlined, ProjectOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";

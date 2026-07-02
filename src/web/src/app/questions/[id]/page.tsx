@@ -7,11 +7,11 @@ import {
   Space,
   Button,
   Input,
-  message,
   Tag,
   Divider,
   Pagination,
 } from "antd";
+import { message } from "@/lib/message";
 import {
   LockOutlined,
   PushpinOutlined,
