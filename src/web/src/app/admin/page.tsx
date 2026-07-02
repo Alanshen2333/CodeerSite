@@ -3,8 +3,9 @@
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { Card, Table, Button, Tag, Space, Statistic, Row, Col, Popconfirm, Select } from "antd";
 import { message } from "@/lib/message";
-import { UserOutlined, QuestionCircleOutlined, ProjectOutlined } from "@ant-design/icons";
+import { UserOutlined, QuestionCircleOutlined, ProjectOutlined, TrophyOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
 import { getAdminStats, getAdminUsers, updateUser, deleteUser } from "@/lib/api/admin";
 import PageContainer from "@/components/layout/PageContainer";
@@ -117,6 +118,12 @@ function AdminContent() {
   return (
     <PageContainer size="wide">
       <h2 className="text-xl font-semibold text-text mb-6">管理面板</h2>
+
+      <div className="mb-6 flex gap-3">
+        <Link href="/admin/badges">
+          <Button icon={<TrophyOutlined />}>徽章管理</Button>
+        </Link>
+      </div>
 
       <Row gutter={16} className="mb-6">
         <Col span={6}>
