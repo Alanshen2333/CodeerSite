@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { App } from "antd";
 import ThemeProvider from "@/providers/ThemeProvider";
@@ -10,6 +10,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Codeersite — 开发者社区",
   description: "融合 GitLab 项目管理与 StackOverflow Q&A 的开发者社区平台",
+};
+
+// viewport-fit=cover 让 iOS 安全区 env(safe-area-inset-*) 生效
+export const viewport: Viewport = {
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

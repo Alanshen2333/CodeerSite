@@ -19,6 +19,7 @@ import {
 } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
+import { layout } from "@/styles/tokens";
 
 const { Header } = Layout;
 
@@ -56,41 +57,52 @@ export default function Navbar() {
 
   return (
     <Header
-      className="flex items-center justify-between bg-bg-container border-b border-border px-6 sticky top-0 z-[100] !h-14 !leading-[56px]"
+      className="bg-bg-container border-b border-border sticky top-0 z-[100] !p-0"
+      style={{
+        // iOS 安全区域：顶栏不被状态栏/刘海遮挡；高度自适应 = safe-area + 56px 内容区
+        paddingTop: "env(safe-area-inset-top)",
+        height: "auto",
+        lineHeight: "56px",
+      }}
     >
-      {/* Logo */}
-      <Link
-        href="/"
-        className="text-xl font-bold text-primary no-underline mr-8"
+      <div
+        // 与 PageContainer 对齐：max-width 居中 + 响应式水平安全边距
+        className="mx-auto flex w-full items-center justify-between px-4 sm:px-6 lg:px-8"
+        style={{ maxWidth: layout.contentWide, height: layout.navHeight }}
       >
-        Codeersite
-      </Link>
+        {/* Logo */}
+        <Link
+          href="/"
+          className="text-xl font-bold text-primary no-underline mr-8"
+        >
+          Codeersite
+        </Link>
 
-      {/* Navigation */}
-      <Menu
-        mode="horizontal"
-        className="flex-1 !border-none !bg-transparent"
-        items={[
-          {
-            key: "questions",
-            icon: <QuestionCircleOutlined />,
-            label: <Link href="/questions">问答</Link>,
-          },
-          {
-            key: "projects",
-            icon: <ProjectOutlined />,
-            label: <Link href="/projects">项目</Link>,
-          },
-          {
-            key: "tags",
-            icon: <TagsOutlined />,
-            label: <Link href="/tags">标签</Link>,
-          },
-        ]}
-      />
+        {/* Navigation */}
+        <Menu
+          mode="horizontal"
+          className="flex-1 !border-none !bg-transparent"
+          items={[
+            {
+              key: "questions",
+              icon: <QuestionCircleOutlined />,
+              label: <Link href="/questions">问答</Link>,
+            },
+            {
+              key: "projects",
+              icon: <ProjectOutlined />,
+              label: <Link href="/projects">项目</Link>,
+            },
+            {
+              key: "tags",
+              icon: <TagsOutlined />,
+              label: <Link href="/tags">标签</Link>,
+            },
+          ]}
+        />
 
-      {/* Right actions */}
-      <Space>
+        {/* Right actions */}
+        <Space>
         <Tooltip title="搜索">
           <Button icon={<SearchOutlined />} type="text" onClick={() => router.push("/search")} />
         </Tooltip>
@@ -130,6 +142,7 @@ export default function Navbar() {
           </>
         )}
       </Space>
+      </div>
     </Header>
   );
 }
