@@ -20,6 +20,7 @@ def register_blueprints(app):
     from app.api.search import search_bp
     from app.api.notifications import notifications_bp
     from app.api.admin import admin_bp
+    from app.api.badges import badges_bp
     from app.api.docs import docs_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
@@ -38,6 +39,7 @@ def register_blueprints(app):
     app.register_blueprint(search_bp, url_prefix="/api/search")
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(badges_bp, url_prefix="/api/badges")
     app.register_blueprint(docs_bp, url_prefix="/api")
 
 

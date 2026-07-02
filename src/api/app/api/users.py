@@ -37,11 +37,13 @@ def get_user(username):
     stats = UserService.get_user_stats(user.id)
     achievements = BadgeService.get_user_achievements(user)
     next_tier = BadgeService.get_next_tier(user)
+    awarded_badges = BadgeService.get_user_awarded_badges(user.id)
     return jsonify(
         user=user.to_public_dict(),
         stats=stats,
         achievements=achievements,
         next_tier=next_tier,
+        awarded_badges=[ub.to_dict() for ub in awarded_badges],
     ), 200
 
 
@@ -93,3 +95,14 @@ def get_user_answers(username):
         page=result.page,
         pages=result.pages,
     ), 200
+
+
+@users_bp.route("/<username>/badges", methods=["GET"])
+def get_user_badges(username):
+    """公开：获取用户已获的自定义徽章。"""
+    user = UserService.get_user_by_username(username)
+    if user is None:
+        return jsonify(error="Not Found", message="User not found."), 404
+
+    awarded = BadgeService.get_user_awarded_badges(user.id)
+    return jsonify(badges=[ub.to_dict() for ub in awarded]), 200
