@@ -15,6 +15,7 @@ import type { Issue, Comment } from "@/types";
 import MarkdownRenderer from "@/components/qa/MarkdownRenderer";
 import CommentList from "@/components/qa/CommentList";
 import CommentForm from "@/components/qa/CommentForm";
+import TimeTracker from "@/components/project/TimeTracker";
 import LoadingState from "@/components/ui/LoadingState";
 import EmptyState from "@/components/ui/EmptyState";
 import Link from "next/link";
@@ -203,6 +204,17 @@ export default function IssueDetailDrawer({ slug, issueNumber, onClose, onChange
               <Text type="secondary">暂无描述</Text>
             )}
           </div>
+
+          {user && (
+            <div className="border-t border-border mt-6 pt-4">
+              <h3 className="text-base font-semibold text-text mb-3">时间跟踪</h3>
+              <TimeTracker
+                slug={slug}
+                issue={issue}
+                onChanged={(updated) => setIssue(updated)}
+              />
+            </div>
+          )}
 
           <div className="border-t border-border mt-6 pt-4">
             <h3 className="text-base font-semibold text-text mb-3">评论</h3>
