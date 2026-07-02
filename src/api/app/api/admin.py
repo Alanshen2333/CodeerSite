@@ -4,6 +4,11 @@ from app.models.user import User
 from app.models.question import Question
 from app.models.answer import Answer
 from app.models.project import Project
+from app.models.badge import Badge, UserBadge
+from app.schemas.badge import (
+    BadgeCreateSchema, BadgeUpdateSchema, AwardSchema, RevokeSchema,
+)
+from app.services.badge_service import BadgeService
 from app.extensions import db
 
 admin_bp = Blueprint("admin", __name__)
@@ -99,3 +104,155 @@ def delete_user(user_id):
     db.session.delete(user)
     db.session.commit()
     return jsonify(message="User deleted."), 200
+
+
+# ── 徽章管理 ─────────────────────────────────────────────
+
+
+@admin_bp.route("/badges", methods=["GET"])
+@jwt_required()
+def list_badges():
+    """Admin: 列出所有自定义徽章定义。"""
+    _, err = _require_admin()
+    if err:
+        return err
+    badges = BadgeService.list_badges()
+    return jsonify(badges=[b.to_dict() for b in badges]), 200
+
+
+@admin_bp.route("/badges", methods=["POST"])
+@jwt_required()
+def create_badge():
+    """Admin: 创建徽章定义。"""
+    admin_user, err = _require_admin()
+    if err:
+        return err
+    try:
+        data = BadgeCreateSchema().load(request.get_json() or {})
+    except Exception as e:
+        return jsonify(error="Validation Error", messages=str(e)), 422
+
+    try:
+        badge = BadgeService.create_badge(
+            name=data["name"],
+            description=data.get("description"),
+            icon=data.get("icon"),
+            color=data.get("color", "#5e6ad2"),
+        )
+    except ValueError as e:
+        return jsonify(error="Conflict", message=str(e)), 409
+
+    db.session.commit()
+    return jsonify(badge=badge.to_dict()), 201
+
+
+@admin_bp.route("/badges/<badge_id>", methods=["PATCH"])
+@jwt_required()
+def update_badge(badge_id):
+    """Admin: 更新徽章定义。"""
+    _, err = _require_admin()
+    if err:
+        return err
+    badge = BadgeService.get_badge(badge_id)
+    if not badge:
+        return jsonify(error="Not Found", message="Badge not found."), 404
+
+    try:
+        data = BadgeUpdateSchema().load(request.get_json() or {}, partial=True)
+    except Exception as e:
+        return jsonify(error="Validation Error", messages=str(e)), 422
+
+    try:
+        badge = BadgeService.update_badge(badge, data)
+    except ValueError as e:
+        return jsonify(error="Conflict", message=str(e)), 409
+
+    db.session.commit()
+    return jsonify(badge=badge.to_dict()), 200
+
+
+@admin_bp.route("/badges/<badge_id>", methods=["DELETE"])
+@jwt_required()
+def delete_badge(badge_id):
+    """Admin: 删除徽章定义（连同发放关系）。"""
+    _, err = _require_admin()
+    if err:
+        return err
+    badge = BadgeService.get_badge(badge_id)
+    if not badge:
+        return jsonify(error="Not Found", message="Badge not found."), 404
+
+    BadgeService.delete_badge(badge)
+    db.session.commit()
+    return jsonify(message="Badge deleted."), 200
+
+
+@admin_bp.route("/badges/<badge_id>/recipients", methods=["GET"])
+@jwt_required()
+def list_recipients(badge_id):
+    """Admin: 查看某徽章的所有获得者。"""
+    _, err = _require_admin()
+    if err:
+        return err
+    badge = BadgeService.get_badge(badge_id)
+    if not badge:
+        return jsonify(error="Not Found", message="Badge not found."), 404
+
+    recipients = BadgeService.get_recipients(badge)
+    return jsonify(recipients=[r.to_dict() for r in recipients]), 200
+
+
+@admin_bp.route("/badges/<badge_id>/award", methods=["POST"])
+@jwt_required()
+def award_badge(badge_id):
+    """Admin: 向用户发放徽章。"""
+    admin_user, err = _require_admin()
+    if err:
+        return err
+    badge = BadgeService.get_badge(badge_id)
+    if not badge:
+        return jsonify(error="Not Found", message="Badge not found."), 404
+
+    try:
+        data = AwardSchema().load(request.get_json() or {})
+    except Exception as e:
+        return jsonify(error="Validation Error", messages=str(e)), 422
+
+    try:
+        ub = BadgeService.award(
+            badge, data["user_id"],
+            awarded_by=admin_user.id,
+            reason=data.get("reason"),
+        )
+    except LookupError as e:
+        return jsonify(error="Not Found", message=str(e)), 404
+    except ValueError as e:
+        return jsonify(error="Conflict", message=str(e)), 409
+
+    db.session.commit()
+    return jsonify(award=ub.to_dict()), 201
+
+
+@admin_bp.route("/badges/<badge_id>/award", methods=["DELETE"])
+@jwt_required()
+def revoke_badge(badge_id):
+    """Admin: 撤销用户徽章。body: {user_id}。"""
+    _, err = _require_admin()
+    if err:
+        return err
+    badge = BadgeService.get_badge(badge_id)
+    if not badge:
+        return jsonify(error="Not Found", message="Badge not found."), 404
+
+    try:
+        data = RevokeSchema().load(request.get_json() or {})
+    except Exception as e:
+        return jsonify(error="Validation Error", messages=str(e)), 422
+
+    try:
+        BadgeService.revoke(badge, data["user_id"])
+    except LookupError as e:
+        return jsonify(error="Not Found", message=str(e)), 404
+
+    db.session.commit()
+    return jsonify(message="Badge revoked."), 200

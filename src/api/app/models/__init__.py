@@ -12,7 +12,8 @@ from app.models.issue import Issue, TimeEntry
 from app.models.milestone import Milestone
 from app.models.kanban_column import KanbanColumn
 from app.models.kanban_card import KanbanCard
+from app.models.badge import Badge, UserBadge
 
 __all__ = ["User", "Tag", "Question", "Answer", "Vote", "Comment", "Bookmark",
            "Project", "ProjectMember", "Star", "Issue", "TimeEntry",
-           "Milestone", "KanbanColumn", "KanbanCard"]
+           "Milestone", "KanbanColumn", "KanbanCard", "Badge", "UserBadge"]

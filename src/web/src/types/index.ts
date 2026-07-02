@@ -310,3 +310,41 @@ export interface UserProfile {
     projects: number;
   };
 }
+
+// -- Badge types --
+
+export interface Badge {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string | null;
+  color: string;
+  kind: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BadgeCreateInput {
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface BadgeUpdateInput {
+  name?: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface UserBadge {
+  id: string;
+  user_id: string;
+  badge_id: string;
+  badge: Badge | null;
+  awarded_by: string | null;
+  reason: string | null;
+  created_at: string;
+}
