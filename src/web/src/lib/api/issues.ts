@@ -18,6 +18,7 @@ export async function getIssue(slug: string, issueNumber: number): Promise<{ iss
 export async function createIssue(slug: string, data: {
   title: string; body?: string; assignee_id?: string;
   priority?: string; milestone_id?: string; tag_ids?: string[];
+  time_estimate?: number | null;
 }): Promise<{ issue: Issue }> {
   const res = await api.post<{ issue: Issue }>(`/projects/${slug}/issues`, data);
   return res.data;
@@ -26,7 +27,7 @@ export async function createIssue(slug: string, data: {
 export async function updateIssue(slug: string, issueNumber: number, data: {
   title?: string; body?: string; assignee_id?: string | null;
   status?: string; priority?: string; milestone_id?: string | null;
-  tag_ids?: string[];
+  tag_ids?: string[]; time_estimate?: number | null;
 }): Promise<{ issue: Issue }> {
   const res = await api.patch<{ issue: Issue }>(`/projects/${slug}/issues/${issueNumber}`, data);
   return res.data;

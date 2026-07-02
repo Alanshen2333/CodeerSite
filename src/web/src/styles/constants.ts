@@ -63,3 +63,14 @@ export function milestonePercent(open: number, closed: number): number {
 export function milestoneProgressText(open: number, closed: number): string {
   return `${closed}/${open + closed} 已关闭`;
 }
+
+// ── 时间跟踪 ────────────────────────────────────────────
+/** 秒 → 人类可读时长，如 3900 → "1h 5m"，0 → "0m"。 */
+export function formatDuration(seconds: number): string {
+  if (!seconds || seconds <= 0) return "0m";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}

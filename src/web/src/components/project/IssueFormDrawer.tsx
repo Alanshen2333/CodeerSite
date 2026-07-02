@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Drawer, Input, Button, Form, Select } from "antd";
+import { Drawer, Input, Button, Form, Select, Space } from "antd";
 import { message } from "@/lib/message";
 import { useAuth } from "@/providers/AuthProvider";
 import { createIssue } from "@/lib/api/issues";
@@ -38,6 +38,9 @@ export default function IssueFormDrawer({ slug, open, onClose, onCreated }: Prop
   const [loading, setLoading] = useState(false);
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  // 预估工时：小时 / 分钟，提交时合并为秒。空表示未估时。
+  const [estimateHours, setEstimateHours] = useState<string>("");
+  const [estimateMinutes, setEstimateMinutes] = useState<string>("");
   const [form] = Form.useForm<FormValues>();
 
   // 登录守卫：未登录时打开则跳转登录页（兼容 ?new_issue=1 深链）。
@@ -51,6 +54,8 @@ export default function IssueFormDrawer({ slug, open, onClose, onCreated }: Prop
   useEffect(() => {
     if (!open || !user) return;
     form.resetFields();
+    setEstimateHours("");
+    setEstimateMinutes("");
     Promise.all([getMembers(slug), getMilestones(slug)])
       .then(([m, mi]) => {
         setMembers(m.members);
@@ -64,6 +69,11 @@ export default function IssueFormDrawer({ slug, open, onClose, onCreated }: Prop
   const onFinish = async (values: FormValues) => {
     setLoading(true);
     try {
+      const h = parseInt(estimateHours || "0", 10);
+      const m = parseInt(estimateMinutes || "0", 10);
+      const estimateSeconds =
+        (isFinite(h) ? h : 0) * 3600 + (isFinite(m) ? m : 0) * 60;
+      const time_estimate = estimateSeconds > 0 ? estimateSeconds : null;
       const r = await createIssue(slug, {
         title: values.title,
         body: values.body,
@@ -71,6 +81,7 @@ export default function IssueFormDrawer({ slug, open, onClose, onCreated }: Prop
         assignee_id: values.assignee_id,
         milestone_id: values.milestone_id,
         tag_ids: values.tag_ids,
+        time_estimate,
       });
       message.success("Issue 创建成功");
       onCreated?.(r.issue);
@@ -132,6 +143,26 @@ export default function IssueFormDrawer({ slug, open, onClose, onCreated }: Prop
         </Form.Item>
         <Form.Item name="tag_ids" label="标签">
           <TagSelect />
+        </Form.Item>
+        <Form.Item label="预估工时">
+          <Space.Compact>
+            <Input
+              prefix="h"
+              inputMode="numeric"
+              placeholder="0"
+              value={estimateHours}
+              onChange={(e) => setEstimateHours(e.target.value.replace(/[^0-9]/g, ""))}
+              className="w-[96px]"
+            />
+            <Input
+              prefix="m"
+              inputMode="numeric"
+              placeholder="0"
+              value={estimateMinutes}
+              onChange={(e) => setEstimateMinutes(e.target.value.replace(/[^0-9]/g, ""))}
+              className="w-[96px]"
+            />
+          </Space.Compact>
         </Form.Item>
         <Form.Item>
           <Button type="primary" htmlType="submit" loading={loading} size="large" block>

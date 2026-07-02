@@ -185,8 +185,29 @@ export interface Issue {
   milestone_id: string | null;
   milestone: Milestone | null;
   tags?: Tag[];
+  /** 预估工时（秒），null 表示未估时 */
+  time_estimate: number | null;
+  /** 已耗时（秒），反范式聚合缓存 */
+  time_spent: number;
   created_at: string;
   updated_at: string;
+}
+
+/** Issue 耗时记录条目。seconds 为本次记录的耗时（秒）。 */
+export interface TimeEntry {
+  id: string;
+  issue_id: string;
+  user_id: string;
+  user: PublicUser | null;
+  seconds: number;
+  note: string | null;
+  created_at: string;
+}
+
+/** GET time-entries 端点返回结构。 */
+export interface TimeEntryListResult {
+  time_entries: TimeEntry[];
+  total: number;
 }
 
 export interface IssueListResult {
