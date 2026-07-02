@@ -1,6 +1,9 @@
+import re
+from app.extensions import db
 from app.models.user import User
 from app.models.question import Question
 from app.models.answer import Answer
+from app.models.badge import Badge, UserBadge
 
 BADGE_TIERS = [
     {"key": "newcomer", "name": "新人", "color": "#8c8c8c", "min_reputation": 0},
@@ -76,3 +79,135 @@ class BadgeService:
             return bool(eval(condition, {"__builtins__": {}}, namespace))
         except Exception:
             return False
+
+    # ── 自定义徽章定义 CRUD ─────────────────────────────
+
+    @staticmethod
+    def list_badges():
+        """列出所有自定义徽章定义（按创建时间倒序）。"""
+        return Badge.query.order_by(Badge.created_at.desc()).all()
+
+    @staticmethod
+    def get_badge(badge_id: str) -> Badge | None:
+        return db.session.get(Badge, badge_id)
+
+    @staticmethod
+    def get_badge_by_slug(slug: str) -> Badge | None:
+        return Badge.query.filter_by(slug=slug).first()
+
+    @staticmethod
+    def create_badge(name: str, description: str | None = None,
+                     icon: str | None = None, color: str = "#5e6ad2") -> Badge:
+        """创建自定义徽章。name 唯一，自动生成 slug。"""
+        name = name.strip()
+        if Badge.query.filter_by(name=name).first():
+            raise ValueError("Badge name already exists.")
+        slug = BadgeService._slugify(name)
+        base = slug
+        i = 1
+        while Badge.query.filter_by(slug=slug).first():
+            slug = f"{base}-{i}"
+            i += 1
+        badge = Badge(
+            name=name,
+            slug=slug,
+            description=description,
+            icon=icon,
+            color=color,
+            kind="custom",
+        )
+        db.session.add(badge)
+        db.session.flush()
+        return badge
+
+    @staticmethod
+    def update_badge(badge: Badge, data: dict) -> Badge:
+        """更新徽章字段。name 改动时同步 slug（保持唯一）。"""
+        if "name" in data and data["name"] is not None:
+            new_name = data["name"].strip()
+            if not new_name:
+                raise ValueError("Badge name cannot be empty.")
+            existing = Badge.query.filter_by(name=new_name).first()
+            if existing and existing.id != badge.id:
+                raise ValueError("Badge name already exists.")
+            badge.name = new_name
+            # 重生成 slug 仅当当前 slug 与旧 name 不一致或冲突时
+            new_slug = BadgeService._slugify(new_name)
+            if new_slug != badge.slug:
+                base = new_slug
+                i = 1
+                while Badge.query.filter_by(slug=new_slug).first() is not None and \
+                        Badge.query.filter_by(slug=new_slug).first().id != badge.id:
+                    new_slug = f"{base}-{i}"
+                    i += 1
+                badge.slug = new_slug
+        if "description" in data:
+            badge.description = data["description"]
+        if "icon" in data:
+            badge.icon = data["icon"]
+        if "color" in data and data["color"]:
+            badge.color = data["color"]
+        db.session.flush()
+        return badge
+
+    @staticmethod
+    def delete_badge(badge: Badge) -> None:
+        """删除徽章定义（级联删除发放关系）。"""
+        db.session.delete(badge)
+        db.session.flush()
+
+    # ── 发放 / 撤销 ─────────────────────────────────────
+
+    @staticmethod
+    def award(badge: Badge, user_id: str, awarded_by: str | None,
+              reason: str | None = None) -> UserBadge:
+        """向用户发放徽章；已发放则抛 ValueError。"""
+        if not db.session.get(User, user_id):
+            raise LookupError("User not found.")
+        existing = UserBadge.query.filter_by(user_id=user_id, badge_id=badge.id).first()
+        if existing:
+            raise ValueError("User already has this badge.")
+        ub = UserBadge(
+            user_id=user_id,
+            badge_id=badge.id,
+            awarded_by=awarded_by,
+            reason=reason,
+        )
+        db.session.add(ub)
+        db.session.flush()
+        return ub
+
+    @staticmethod
+    def revoke(badge: Badge, user_id: str) -> None:
+        """撤销用户徽章；不存在则抛 LookupError。"""
+        ub = UserBadge.query.filter_by(user_id=user_id, badge_id=badge.id).first()
+        if not ub:
+            raise LookupError("User does not have this badge.")
+        db.session.delete(ub)
+        db.session.flush()
+
+    @staticmethod
+    def get_recipients(badge: Badge) -> list[UserBadge]:
+        return (
+            UserBadge.query
+            .filter_by(badge_id=badge.id)
+            .order_by(UserBadge.created_at.desc())
+            .all()
+        )
+
+    @staticmethod
+    def get_user_awarded_badges(user_id: str) -> list[UserBadge]:
+        """用户已获的自定义徽章列表。"""
+        return (
+            UserBadge.query
+            .filter_by(user_id=user_id)
+            .order_by(UserBadge.created_at.desc())
+            .all()
+        )
+
+    @staticmethod
+    def _slugify(name: str) -> str:
+        """名称转 URL-safe slug（与 tag_service 一致策略）。"""
+        slug = re.sub(r"[^\w\s-]", "", name.lower())
+        slug = re.sub(r"[\s_]+", "-", slug)
+        return slug.strip("-") or "badge"
