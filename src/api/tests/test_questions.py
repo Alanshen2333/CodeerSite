@@ -29,7 +29,7 @@ class TestQuestions:
     def test_get_single_question(self, client, auth_headers):
         create_resp = client.post("/api/questions", json={
             "title": "Single question",
-            "body": "Content",
+            "body": "Content body here.",
         }, headers=auth_headers)
         q_id = create_resp.get_json()["question"]["id"]
 
@@ -39,8 +39,8 @@ class TestQuestions:
 
     def test_delete_question(self, client, auth_headers):
         create_resp = client.post("/api/questions", json={
-            "title": "Delete me",
-            "body": "Content",
+            "title": "Delete me please",
+            "body": "Content body here.",
         }, headers=auth_headers)
         q_id = create_resp.get_json()["question"]["id"]
 
@@ -52,10 +52,10 @@ class TestQuestions:
 
     def test_list_with_sorting(self, client, auth_headers):
         client.post("/api/questions", json={
-            "title": "Q1", "body": "B",
+            "title": "Question one", "body": "Body content one.",
         }, headers=auth_headers)
         client.post("/api/questions", json={
-            "title": "Q2", "body": "B",
+            "title": "Question two", "body": "Body content two.",
         }, headers=auth_headers)
 
         resp = client.get("/api/questions?sort=newest&per_page=2")
