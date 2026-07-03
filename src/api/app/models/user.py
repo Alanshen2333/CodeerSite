@@ -19,6 +19,10 @@ class User(db.Model):
     role = db.Column(db.String(20), default="user", nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     last_login_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    # Gitea (VCS backend) —— token 加密存储，永不返回前端
+    gitea_user_id = db.Column(db.String(36), index=True, nullable=True)
+    gitea_token_encrypted = db.Column(db.Text, nullable=True)
     created_at = db.Column(
         db.DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

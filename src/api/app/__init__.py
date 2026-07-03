@@ -17,6 +17,7 @@ def register_blueprints(app):
     from app.api.issues import issues_bp
     from app.api.milestones import milestones_bp
     from app.api.kanban import kanban_bp
+    from app.api.repos import repos_bp
     from app.api.search import search_bp
     from app.api.notifications import notifications_bp
     from app.api.admin import admin_bp
@@ -36,6 +37,7 @@ def register_blueprints(app):
     app.register_blueprint(issues_bp, url_prefix="/api")
     app.register_blueprint(milestones_bp, url_prefix="/api")
     app.register_blueprint(kanban_bp, url_prefix="/api")
+    app.register_blueprint(repos_bp, url_prefix="/api")
     app.register_blueprint(search_bp, url_prefix="/api/search")
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")

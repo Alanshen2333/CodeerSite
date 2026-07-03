@@ -1,9 +1,6 @@
 import os
 
 
-import os
-
-
 class Config:
     """Base configuration."""
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
@@ -17,6 +14,14 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = 3600  # 1 hour
     JWT_REFRESH_TOKEN_EXPIRES = 2592000  # 30 days
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+
+    # Gitea (VCS backend)
+    GITEA_URL = os.getenv("GITEA_URL", "")
+    GITEA_ADMIN_TOKEN = os.getenv("GITEA_ADMIN_TOKEN", "")
+    GITEA_ADMIN_USER = os.getenv("GITEA_ADMIN_USER", "")
+    GITEA_ADMIN_PASS = os.getenv("GITEA_ADMIN_PASS", "")
+    GITEA_ORG = os.getenv("GITEA_ORG", "codeersite")
+    GITEA_TOKEN_ENCRYPTION_KEY = os.getenv("GITEA_TOKEN_ENCRYPTION_KEY", "")
 
 
 class DevelopmentConfig(Config):
@@ -43,6 +48,13 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     MONGO_URI = "mongodb://localhost:27017/codeersite_test"
     MONGO_SERVER_SELECTION_TIMEOUT_MS = 100
+    # 测试环境关闭 Gitea 桥接，但保留合法 Fernet key 以便测试加解密
+    GITEA_URL = ""
+    GITEA_ADMIN_TOKEN = ""
+    GITEA_ADMIN_USER = ""
+    GITEA_ADMIN_PASS = ""
+    # 32 字节全 0 的 base64，仅用于测试，切勿用于生产
+    GITEA_TOKEN_ENCRYPTION_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 
 config = {

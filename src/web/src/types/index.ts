@@ -149,6 +149,8 @@ export interface Project {
   starred?: boolean;
   members_count: number;
   issues_count: number;
+  gitea_full_name: string | null;
+  has_repo: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -158,6 +160,29 @@ export interface ProjectListResult {
   total: number;
   page: number;
   pages: number;
+}
+
+export interface Repo {
+  id: string;
+  name: string;
+  full_name: string;
+  description: string | null;
+  default_branch: string;
+  private: boolean;
+  html_url: string;
+  ssh_url: string;
+  clone_url: string;
+  stars_count: number;
+  forks_count: number;
+  open_issues_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RepoCreateInput {
+  name?: string;
+  description?: string;
+  private?: boolean;
 }
 
 export interface ProjectMember {

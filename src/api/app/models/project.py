@@ -13,6 +13,11 @@ class Project(db.Model):
     owner_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
     visibility = db.Column(db.String(10), default="public", nullable=False)  # public/private
     star_count = db.Column(db.Integer, default=0, nullable=False)
+
+    # Gitea (VCS backend) —— Project:Repo = 1:1 可选关联
+    gitea_repo_id = db.Column(db.String(36), index=True, nullable=True)
+    gitea_full_name = db.Column(db.String(255), nullable=True)
+
     created_at = db.Column(
         db.DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -44,6 +49,8 @@ class Project(db.Model):
             "star_count": self.star_count,
             "members_count": self.members.count(),
             "issues_count": self.issues.count(),
+            "gitea_full_name": self.gitea_full_name,
+            "has_repo": self.gitea_repo_id is not None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

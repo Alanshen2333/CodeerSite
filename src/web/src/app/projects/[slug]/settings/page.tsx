@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Input, Button, Card, Form, Radio, Select, Space, Popconfirm, Tag } from "antd";
+import { Input, Button, Card, Form, Radio, Select, Space, Popconfirm, Tag, Typography } from "antd";
 import { message } from "@/lib/message";
-import { DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined, CodeOutlined, CopyOutlined } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   getProject,
@@ -14,8 +14,9 @@ import {
   removeMember,
   addMember,
 } from "@/lib/api/projects";
+import { getRepo, createRepo, deleteRepo } from "@/lib/api/repos";
 import { searchUsers } from "@/lib/api/users";
-import type { Project, ProjectMember } from "@/types";
+import type { Project, ProjectMember, Repo } from "@/types";
 import PageContainer from "@/components/layout/PageContainer";
 import LoadingState from "@/components/ui/LoadingState";
 import EmptyState from "@/components/ui/EmptyState";
@@ -39,6 +40,10 @@ export default function SettingsPage() {
   const [form] = Form.useForm<FormValues>();
   const [project, setProject] = useState<Project | null>(null);
   const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [repo, setRepo] = useState<Repo | null>(null);
+  const [repoLoading, setRepoLoading] = useState(true);
+  const [creatingRepo, setCreatingRepo] = useState(false);
+  const [deletingRepo, setDeletingRepo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -58,10 +63,22 @@ export default function SettingsPage() {
         description: p.project.description || "",
         visibility: p.project.visibility,
       });
+      // 项目拥有仓库时才拉取仓库信息
+      if (p.project.has_repo) {
+        try {
+          const r = await getRepo(slug);
+          setRepo(r.repo);
+        } catch {
+          setRepo(null);
+        }
+      } else {
+        setRepo(null);
+      }
     } catch {
       setProject(null);
     } finally {
       setLoading(false);
+      setRepoLoading(false);
     }
   };
   useEffect(() => {
@@ -180,6 +197,46 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCreateRepo = async () => {
+    setCreatingRepo(true);
+    try {
+      const r = await createRepo(slug);
+      setRepo(r.repo);
+      setProject((p) => (p ? { ...p, has_repo: true, gitea_full_name: r.repo.full_name } : p));
+      message.success("仓库已创建");
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || "创建仓库失败"
+          : "创建仓库失败";
+      message.error(msg);
+    } finally {
+      setCreatingRepo(false);
+    }
+  };
+
+  const handleDeleteRepo = async () => {
+    setDeletingRepo(true);
+    try {
+      await deleteRepo(slug);
+      setRepo(null);
+      setProject((p) => (p ? { ...p, has_repo: false, gitea_full_name: null } : p));
+      message.success("仓库已删除");
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || "删除仓库失败"
+          : "删除仓库失败";
+      message.error(msg);
+    } finally {
+      setDeletingRepo(false);
+    }
+  };
+
+  const handleCopyCloneUrl = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => message.success("已复制"));
+  };
+
   return (
     <PageContainer size="narrow">
       <h2 className="text-xl font-semibold text-text mb-6">项目设置</h2>
@@ -213,6 +270,61 @@ export default function SettingsPage() {
             </Button>
           </Form.Item>
         </Form>
+      </Card>
+
+      <Card
+        title={
+          <Space>
+            <CodeOutlined />
+            <span>代码仓库</span>
+          </Space>
+        }
+        className="mb-4"
+        loading={repoLoading}
+      >
+        {repo ? (
+          <Space direction="vertical" className="w-full">
+            <div className="flex justify-between items-center flex-wrap gap-3">
+              <div>
+                <Typography.Text className="text-text font-medium">{repo.full_name}</Typography.Text>
+                <div className="text-text-secondary text-sm">
+                  默认分支：{repo.default_branch}
+                </div>
+              </div>
+              <Popconfirm
+                title="确定删除仓库？"
+                description="Gitea 中的仓库数据将被删除，且无法恢复。"
+                okText="删除"
+                okButtonProps={{ danger: true }}
+                onConfirm={handleDeleteRepo}
+              >
+                <Button danger loading={deletingRepo}>
+                  删除仓库
+                </Button>
+              </Popconfirm>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap p-3 bg-bg-layout rounded">
+              <Typography.Text code className="text-xs">
+                {repo.clone_url}
+              </Typography.Text>
+              <Button
+                type="text"
+                size="small"
+                icon={<CopyOutlined />}
+                onClick={() => handleCopyCloneUrl(repo.clone_url)}
+              >
+                复制
+              </Button>
+            </div>
+          </Space>
+        ) : (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <EmptyState description="尚未关联 Gitea 仓库" />
+            <Button type="primary" loading={creatingRepo} onClick={handleCreateRepo}>
+              创建仓库
+            </Button>
+          </div>
+        )}
       </Card>
 
       <Card title="成员" className="mb-4">
