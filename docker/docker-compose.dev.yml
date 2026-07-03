@@ -10,6 +10,9 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # 首次 pgdata 初始化时执行：创建 Gitea 使用的独立 database。
+      # pgdata 已存在的环境下该脚本不会执行，由 scripts/init-gitea.sh 兜底补建。
+      - ./init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U codeersite"]
       interval: 5s
@@ -31,6 +34,43 @@ services:
       timeout: 3s
       retries: 5
 
+  gitea:
+    image: gitea/gitea:1.22
+    container_name: codeersite-gitea
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # 数据库：复用同一 PG 实例的独立 gitea database（codeersite 账号）
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: gitea
+      GITEA__database__USER: codeersite
+      GITEA__database__PASSWD: codeersite_dev
+      # server：容器内监听 3000(HTTP)/22(SSH)，对外映射 23000/2222
+      GITEA__server__DOMAIN: localhost
+      GITEA__server__ROOT_URL: http://localhost:23000/
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__server__SSH_PORT: "2222"        # 对外显示端口（clone URL 用）
+      # 首配：跳过 web 安装页、禁用注册、离线模式（不拉取外部资源）
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__server__OFFLINE_MODE: "true"
+    ports:
+      - "23000:3000"
+      - "2222:22"
+    volumes:
+      - giteadata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/api/v1/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # 若 gitea database 缺失导致首启 crash，init-gitea.sh 兜底建库后会自动重起恢复
+    restart: unless-stopped
+
 volumes:
   pgdata:
   mongodata:
+  giteadata:

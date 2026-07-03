@@ -14,15 +14,10 @@ echo -e "${BLUE}   Codeersite 开发环境${NC}"
 echo -e "${BLUE}========================================${NC}"
 
 # 1. Docker
-echo -e "\n${YELLOW}[1/3] Docker 服务...${NC}"
-if docker compose -f "$ROOT/docker/docker-compose.dev.yml" ps --status running 2>/dev/null | grep -q "Up"; then
-    echo -e "${GREEN}  ✓ PostgreSQL + MongoDB 已在运行${NC}"
-else
-    echo "  启动中..."
-    docker compose -f "$ROOT/docker/docker-compose.dev.yml" up -d
-    echo -e "${GREEN}  ✓ 已启动${NC}"
-    sleep 2
-fi
+echo -e "\n${YELLOW}[1/3] Docker 服务（PostgreSQL + MongoDB + Gitea）...${NC}"
+docker compose -f "$ROOT/docker/docker-compose.dev.yml" up -d
+echo -e "${GREEN}  ✓ PostgreSQL + MongoDB + Gitea 已就绪${NC}"
+sleep 2
 
 # 2. DB Migration
 echo -e "\n${YELLOW}[2/3] 数据库迁移...${NC}"
@@ -59,6 +54,8 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${GREEN}  开发环境已就绪！${NC}"
 echo -e "  ${BLUE}后端 API :${NC} http://localhost:5100/api"
 echo -e "  ${BLUE}前端页面 :${NC} http://localhost:3000"
+echo -e "  ${BLUE}Gitea    :${NC} http://localhost:23000"
+echo -e "  ${YELLOW}首次使用 Gitea 需运行：bash scripts/init-gitea.sh${NC}"
 echo -e "  ${RED}按 Ctrl+C 停止${NC}"
 echo -e "${BLUE}========================================${NC}"
 
