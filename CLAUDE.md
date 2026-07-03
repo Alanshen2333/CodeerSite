@@ -86,6 +86,13 @@ uv run pytest
 - 多态关联（votes / comments / bookmarks）通过 `target_type` + `target_id`。
 - 看板：KanbanColumn → KanbanCard（可关联 Issue）；Milestone 聚合 open/closed issue 计数。
 
+### 服务层契约
+
+- Service 为静态方法类（如 `IssueService.create_issue(...)`），方法返回 ORM 对象 / `Pagination` / `dict`，内部自行 `db.session.commit()`，不抛业务异常。
+- Controller 职责：参数校验（Marshmallow `Schema().load()`，`ValidationError` → 422）、权限判断（`ProjectService.get_user_role`）、404/403 响应、`model.to_dict()` 序列化。
+- 通用 404 helper：`_get_project_or_404(slug) -> (project, err)`，controller `if err: return err`。
+- 错误响应统一 `jsonify(error=..., message=...), code`；`utils/errors.py` 兜底未捕获异常。
+
 ## 前端架构
 
 - **路由**：App Router，页面在 `src/web/src/app/`；`(auth)` 路由组放 login / register。
@@ -95,6 +102,12 @@ uv run pytest
 - **认证 token**：`src/lib/auth.ts`（localStorage 存取 access / refresh token）。
 - **类型**：`src/web/src/types/`。
 - **代理**：`next.config.ts` 将 `/api/*` rewrites 到 `localhost:5000`，故前端用相对路径，无 CORS 问题。
+
+### 数据获取
+
+- HTTP 层：`src/lib/api.ts`（axios 实例 + 拦截器：自动附 token、401 自动 refresh 并发去重）；按模块拆分 `src/lib/api/*.ts` 导出 API 函数。
+- 页面数据获取：手动 `useEffect` + API 函数（未引入 SWR / React Query）；分页走 query string。
+- 表单：`react-hook-form` + `zod` 校验。
 
 ### API 概览
 
@@ -141,13 +154,20 @@ uv run pytest
 ## 代码风格
 
 - Python：类型注解，`User | None` 语法。
-- TypeScript：严格模式，接口在 `types/`。
+- TypeScript：接口在 `types/`。
 - 错误处理：后端 `{"error","message"}` + HTTP 状态码。
 - 中文注释与文档。
 
+## 测试约定
+
+- 测试位于 `src/api/tests/`；`conftest.py` 提供 `app`（test 配置 + in-memory SQLite `db.create_all`）、`client`、`auth_headers` fixtures。
+- 集成测试为主：通过 test client 打真实 HTTP，用 `_login` / `_create_project` 等辅助函数构造前置数据，断言响应状态码与 JSON；相关用例聚合为 `class TestXxx:`。
+- 不连真实 PG / Mongo；外部依赖（如 Gitea）用 mock，勿打真实服务。
+- 运行：`uv run pytest`。
+
 ## 环境变量
 
-见 `.env.example`：`FLASK_APP`、`FLASK_ENV`、`SECRET_KEY`、`DATABASE_URL`、`MONGO_URI`、`CORS_ORIGINS`、`JWT_SECRET_KEY`。
+见 `.env.example`（唯一源，含说明与默认值）。
 
 ## 当前状态
 
