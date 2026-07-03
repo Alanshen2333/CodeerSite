@@ -185,6 +185,41 @@ export interface RepoCreateInput {
   private?: boolean;
 }
 
+export interface Branch {
+  name: string;
+  commit: string | null;
+}
+
+export interface TreeEntry {
+  name: string;
+  path: string;
+  type: "file" | "dir" | "symlink" | "submodule";
+  size: number | null;
+  sha: string;
+  download_url: string | null;
+}
+
+export interface Blob {
+  name: string;
+  path: string;
+  sha: string;
+  size: number;
+  content: string;
+  encoding: string;
+  html_url: string;
+  download_url: string | null;
+}
+
+export interface Commit {
+  sha: string;
+  message: string;
+  full_message: string;
+  author_name: string | null;
+  author_email: string | null;
+  date: string | null;
+  html_url: string | null;
+}
+
 export interface ProjectMember {
   id: string;
   project_id: string;

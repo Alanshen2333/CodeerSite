@@ -9,6 +9,7 @@ import {
   EditOutlined,
   StarOutlined,
   StarFilled,
+  CodeOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
 import { getProject, toggleProjectStar } from "@/lib/api/projects";
@@ -21,12 +22,13 @@ import EmptyState from "@/components/ui/EmptyState";
 import IssuesPanel from "@/components/project/panels/IssuesPanel";
 import KanbanPanel from "@/components/project/panels/KanbanPanel";
 import MilestonesPanel from "@/components/project/panels/MilestonesPanel";
+import ReposPanel from "@/components/project/panels/ReposPanel";
 import IssueDetailDrawer from "@/components/project/IssueDetailDrawer";
 import IssueFormDrawer from "@/components/project/IssueFormDrawer";
 import MilestoneDetailDrawer from "@/components/project/MilestoneDetailDrawer";
 
-type TabKey = "issues" | "kanban" | "milestones";
-const VALID_TABS: TabKey[] = ["issues", "kanban", "milestones"];
+type TabKey = "issues" | "kanban" | "milestones" | "repos";
+const VALID_TABS: TabKey[] = ["issues", "kanban", "milestones", "repos"];
 
 export default function ProjectPage() {
   return (
@@ -245,6 +247,12 @@ function ProjectPageInner() {
                 refreshTick={refreshTick}
               />
             ),
+          },
+          {
+            key: "repos",
+            label: "代码",
+            icon: <CodeOutlined />,
+            children: <ReposPanel slug={slug} hasRepo={project.has_repo} isOwner={isOwner} />,
           },
         ]}
       />

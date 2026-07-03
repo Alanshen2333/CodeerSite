@@ -272,6 +272,22 @@ class UserGiteaClient:
         return self.request("DELETE", path, **kwargs)
 
 
+class ReadOnlyGiteaClient:
+    """使用固定 token 进行只读请求；用于公开项目匿名访问。"""
+
+    def __init__(self, token: str):
+        self.token = token
+
+    def _headers(self) -> dict:
+        return {"Authorization": f"token {self.token}"}
+
+    def request(self, method: str, path: str, **kwargs) -> httpx.Response | None:
+        return GiteaClient._request(method, path, headers=self._headers(), **kwargs)
+
+    def get(self, path: str, **kwargs) -> httpx.Response | None:
+        return self.request("GET", path, **kwargs)
+
+
 def _generate_password(length: int = 32) -> str:
     """生成符合 Gitea 密码策略的随机强密码。"""
     alphabet = string.ascii_letters + string.digits + "!@#$%^&*"

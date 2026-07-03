@@ -22,6 +22,8 @@ class Config:
     GITEA_ADMIN_PASS = os.getenv("GITEA_ADMIN_PASS", "")
     GITEA_ORG = os.getenv("GITEA_ORG", "codeersite")
     GITEA_TOKEN_ENCRYPTION_KEY = os.getenv("GITEA_TOKEN_ENCRYPTION_KEY", "")
+    # 公开项目匿名读取仓库内容时使用的 token；未配置则回退到 ADMIN_TOKEN
+    GITEA_PUBLIC_READONLY_TOKEN = os.getenv("GITEA_PUBLIC_READONLY_TOKEN", "")
 
 
 class DevelopmentConfig(Config):
@@ -55,6 +57,7 @@ class TestConfig(Config):
     GITEA_ADMIN_PASS = ""
     # 32 字节全 0 的 base64，仅用于测试，切勿用于生产
     GITEA_TOKEN_ENCRYPTION_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    GITEA_PUBLIC_READONLY_TOKEN = ""
 
 
 config = {

@@ -8,6 +8,28 @@ from app.models.project import Project
 from app.services.project_service import ProjectService
 
 
+def _mock_response(status=200, data=None):
+    """Helper: 构造 mock httpx Response。"""
+    resp = MagicMock()
+    resp.status_code = status
+    resp.json.return_value = data
+    return resp
+
+
+def _mock_client(responses):
+    """Helper: 构造按路径返回响应的 mock Gitea 客户端。"""
+    client = MagicMock()
+
+    def get(path, **kwargs):
+        for prefix, resp in responses.items():
+            if path.startswith(prefix):
+                return resp
+        return _mock_response(404, {"message": "not found"})
+
+    client.get.side_effect = get
+    return client
+
+
 def _login(client, email="test@example.com", password="password123"):
     """Helper: 注册并登录，返回 headers。"""
     client.post("/api/auth/register", json={
@@ -196,3 +218,154 @@ class TestRepoEndpoints:
         mock_client.admin_delete_repo.assert_called_once_with("codeersite", "test-project")
         assert project.gitea_repo_id is None
         assert project.gitea_full_name is None
+
+
+class TestRepoReadonlyEndpoints:
+    """阶段 2 只读浏览端点。"""
+
+    @patch("app.api.repos.GiteaClient")
+    def test_list_branches(self, mock_client, client):
+        mock_client.admin_get_repo.return_value = {"default_branch": "main"}
+        mock_client.for_user.return_value = _mock_client({
+            "/api/v1/repos/codeersite/test-project/branches": _mock_response(200, [
+                {"name": "main", "commit": {"id": "abc123"}},
+                {"name": "dev", "commit": {"id": "def456"}},
+            ]),
+        })
+
+        headers = _login(client)
+        slug = _create_project(client, headers)
+        project = Project.query.filter_by(slug=slug).first()
+        project.gitea_repo_id = "99"
+        project.gitea_full_name = "codeersite/test-project"
+
+        resp = client.get(f"/api/projects/{slug}/repo/branches", headers=headers)
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data["branches"]) == 2
+        assert data["branches"][0]["name"] == "main"
+
+    @patch("app.api.repos.GiteaClient")
+    def test_get_tree(self, mock_client, client):
+        mock_client.admin_get_repo.return_value = {"default_branch": "main"}
+        mock_client.for_user.return_value = _mock_client({
+            "/api/v1/repos/codeersite/test-project/contents/": _mock_response(200, [
+                {"name": "src", "path": "src", "type": "dir", "sha": "d1"},
+                {"name": "README.md", "path": "README.md", "type": "file", "size": 42, "sha": "f1"},
+            ]),
+        })
+
+        headers = _login(client)
+        slug = _create_project(client, headers)
+        project = Project.query.filter_by(slug=slug).first()
+        project.gitea_repo_id = "99"
+        project.gitea_full_name = "codeersite/test-project"
+
+        resp = client.get(f"/api/projects/{slug}/repo/tree", headers=headers)
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["ref"] == "main"
+        assert len(data["tree"]) == 2
+        assert data["tree"][0]["name"] == "src"
+
+    @patch("app.api.repos.GiteaClient")
+    def test_get_blob(self, mock_client, client):
+        import base64
+
+        content = base64.b64encode(b"hello world").decode()
+        mock_client.admin_get_repo.return_value = {"default_branch": "main"}
+        mock_client.for_user.return_value = _mock_client({
+            "/api/v1/repos/codeersite/test-project/contents/README.md": _mock_response(200, {
+                "name": "README.md",
+                "path": "README.md",
+                "sha": "f1",
+                "size": 11,
+                "encoding": "base64",
+                "content": content,
+                "html_url": "http://gitea/codeersite/test-project/blob/main/README.md",
+                "download_url": None,
+            }),
+        })
+
+        headers = _login(client)
+        slug = _create_project(client, headers)
+        project = Project.query.filter_by(slug=slug).first()
+        project.gitea_repo_id = "99"
+        project.gitea_full_name = "codeersite/test-project"
+
+        resp = client.get(f"/api/projects/{slug}/repo/blob?path=README.md", headers=headers)
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["blob"]["content"] == "hello world"
+
+    @patch("app.api.repos.GiteaClient")
+    def test_list_commits(self, mock_client, client):
+        mock_client.admin_get_repo.return_value = {"default_branch": "main"}
+        mock_client.for_user.return_value = _mock_client({
+            "/api/v1/repos/codeersite/test-project/commits": _mock_response(200, [
+                {
+                    "sha": "abc123",
+                    "commit": {
+                        "message": "init\n\nmore",
+                        "author": {"name": "Dev", "email": "dev@example.com", "date": "2026-07-03T00:00:00Z"},
+                    },
+                    "html_url": "http://gitea/commit/abc123",
+                }
+            ]),
+        })
+
+        headers = _login(client)
+        slug = _create_project(client, headers)
+        project = Project.query.filter_by(slug=slug).first()
+        project.gitea_repo_id = "99"
+        project.gitea_full_name = "codeersite/test-project"
+
+        resp = client.get(f"/api/projects/{slug}/repo/commits", headers=headers)
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data["commits"]) == 1
+        assert data["commits"][0]["message"] == "init"
+
+    @patch("app.api.repos.GiteaClient")
+    @patch("app.api.repos.ReadOnlyGiteaClient")
+    def test_public_repo_anonymous_tree(self, mock_ro_client, mock_client, client):
+        """公开项目允许匿名访问 tree。"""
+        mock_client.admin_get_repo.return_value = {"default_branch": "main"}
+        mock_ro_instance = _mock_client({
+            "/api/v1/repos/codeersite/test-project/contents/": _mock_response(200, [
+                {"name": "README.md", "path": "README.md", "type": "file", "size": 10, "sha": "f1"},
+            ]),
+        })
+        mock_ro_client.return_value = mock_ro_instance
+
+        headers = _login(client)
+        slug = _create_project(client, headers)
+        project = Project.query.filter_by(slug=slug).first()
+        project.gitea_repo_id = "99"
+        project.gitea_full_name = "codeersite/test-project"
+        from app.extensions import db
+        db.session.commit()
+
+        with client.application.app_context():
+            from flask import current_app
+
+            current_app.config["GITEA_ADMIN_TOKEN"] = "anon-token"
+            resp = client.get(f"/api/projects/{slug}/repo/tree")
+
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data["tree"]) == 1
+
+    def test_private_repo_anonymous_forbidden(self, client):
+        """私有项目匿名访问只读端点返回 403。"""
+        headers = _login(client)
+        slug = _create_project(client, headers)
+        project = Project.query.filter_by(slug=slug).first()
+        project.visibility = "private"
+        project.gitea_repo_id = "99"
+        project.gitea_full_name = "codeersite/test-project"
+        from app.extensions import db
+        db.session.commit()
+
+        resp = client.get(f"/api/projects/{slug}/repo/tree")
+        assert resp.status_code == 403
