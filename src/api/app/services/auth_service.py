@@ -1,5 +1,6 @@
 from app.extensions import db
 from app.models.user import User
+from app.services.email_code_service import EmailCodeService
 from app.services.gitea_client import GiteaClient
 from app.utils.crypto import encrypt_token
 
@@ -52,4 +53,13 @@ class AuthService:
             return None
         if not user.check_password(password):
             return None
+        return user
+
+    @staticmethod
+    def change_password(user: User, verification_code: str, new_password: str) -> User:
+        """校验邮箱验证码后修改密码。"""
+        if not EmailCodeService.verify_code(user.email, "change_password", verification_code):
+            raise ValueError("验证码无效或已过期。")
+        user.set_password(new_password)
+        db.session.commit()
         return user

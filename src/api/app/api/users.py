@@ -1,5 +1,6 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file, abort
 from flask_jwt_extended import jwt_required, get_current_user
+from io import BytesIO
 from app.extensions import db
 from app.models.user import User
 from app.models.question import Question
@@ -106,3 +107,17 @@ def get_user_badges(username):
 
     awarded = BadgeService.get_user_awarded_badges(user.id)
     return jsonify(badges=[ub.to_dict() for ub in awarded]), 200
+
+
+@users_bp.route("/avatar/<user_id>", methods=["GET"])
+def get_user_avatar(user_id):
+    """公开：返回用户头像二进制。"""
+    user = db.session.get(User, user_id)
+    if user is None or not user.avatar_blob or not user.avatar_mime_type:
+        abort(404)
+
+    return send_file(
+        BytesIO(user.avatar_blob),
+        mimetype=user.avatar_mime_type,
+        max_age=86400,
+    ), 200

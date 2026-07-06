@@ -45,3 +45,18 @@ export interface RegisterInput {
   password: string;
   display_name?: string;
 }
+
+export interface UpdateProfileInput {
+  display_name?: string;
+  bio?: string;
+  website?: string;
+  location?: string;
+  avatar_url?: string;
+}
+
+export interface ChangePasswordInput {
+  verification_code: string;
+  new_password: string;
+}
+
+export type EmailCodePurpose = "change_password" | "disable_2fa" | "recover_2fa";
