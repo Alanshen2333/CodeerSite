@@ -12,6 +12,7 @@ import {
 } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
 import { getQuestions } from "@/lib/api/questions";
+import { getStats } from "@/lib/api/stats";
 import type { Question } from "@/types";
 import Link from "next/link";
 import QuestionCard from "@/components/qa/QuestionCard";
@@ -24,18 +25,18 @@ const { Title, Paragraph } = Typography;
 export default function Home() {
   const { user } = useAuth();
   const [hotQuestions, setHotQuestions] = useState<Question[]>([]);
-  const [stats, setStats] = useState({ questions: 0, answers: 0, projects: 0, users: 1 });
+  const [stats, setStats] = useState({ questions: 0, answers: 0, projects: 0, users: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const result = await getQuestions({ sort: "popular", per_page: 5 });
-        setHotQuestions(result.questions);
-        setStats((prev) => ({
-          ...prev,
-          questions: result.total,
-        }));
+        const [statsResult, questionsResult] = await Promise.all([
+          getStats(),
+          getQuestions({ sort: "popular", per_page: 5 }),
+        ]);
+        setStats(statsResult);
+        setHotQuestions(questionsResult.questions);
       } catch {
         // Silently fail
       } finally {
