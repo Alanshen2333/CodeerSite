@@ -62,8 +62,21 @@ class TagService:
             if tag:
                 tag.usage_count = count
 
-    @staticmethod
-    def _slugify(name: str) -> str:
+    @classmethod
+    def create_tag(cls, name: str, description: str = None, color: str = "#1677ff") -> Tag:
+        """创建新标签。名称查重，自动生成 slug。"""
+        name = name.strip().lower()
+        existing = Tag.query.filter_by(name=name).first()
+        if existing:
+            raise ValueError("Tag already exists.")
+        slug = cls._slugify(name)
+        tag = Tag(name=name, slug=slug, description=description, color=color)
+        db.session.add(tag)
+        db.session.commit()
+        return tag
+
+    @classmethod
+    def _slugify(cls, name: str) -> str:
         """Convert tag name to URL-safe slug."""
         slug = re.sub(r"[^\w\s-]", "", name.lower())
         slug = re.sub(r"[\s_]+", "-", slug)

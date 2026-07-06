@@ -101,16 +101,16 @@ class QuestionService:
         elif filter_type == "pinned":
             query = query.filter_by(is_pinned=True)
 
-        # Sort
+        # Pinned always on top
+        query = query.order_by(Question.is_pinned.desc())
+
         if sort == "popular":
             query = query.order_by(Question.vote_count.desc())
         elif sort == "unanswered":
-            query = query.filter_by(answer_count=0).order_by(Question.created_at.desc())
+            query = query.filter_by(answer_count=0)
+            query = query.order_by(Question.created_at.desc())
         else:  # newest
             query = query.order_by(Question.created_at.desc())
-
-        # Pinned always on top
-        query = query.order_by(Question.is_pinned.desc(), Question.created_at.desc())
 
         return query.paginate(page=page, per_page=per_page, error_out=False)
 
