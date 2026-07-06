@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from app.extensions import db, bcrypt
+from app.utils.crypto import encrypt_token
 
 
 class User(db.Model):
@@ -12,6 +13,9 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     display_name = db.Column(db.String(100), nullable=True)
     avatar_url = db.Column(db.String(500), nullable=True)
+    avatar_blob = db.Column(db.LargeBinary, nullable=True)
+    avatar_mime_type = db.Column(db.String(32), nullable=True)
+    avatar_updated_at = db.Column(db.DateTime(timezone=True), nullable=True)
     bio = db.Column(db.Text, nullable=True)
     website = db.Column(db.String(255), nullable=True)
     location = db.Column(db.String(100), nullable=True)
@@ -19,10 +23,13 @@ class User(db.Model):
     role = db.Column(db.String(20), default="user", nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     last_login_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    email_verified_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
     # Gitea (VCS backend) —— token 加密存储，永不返回前端
     gitea_user_id = db.Column(db.String(36), index=True, nullable=True)
     gitea_token_encrypted = db.Column(db.Text, nullable=True)
+    gitea_refresh_token_encrypted = db.Column(db.Text, nullable=True)
+    gitea_token_expires_at = db.Column(db.DateTime(timezone=True), nullable=True)
     created_at = db.Column(
         db.DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -45,22 +52,46 @@ class User(db.Model):
     def check_password(self, password: str) -> bool:
         return bcrypt.check_password_hash(self.password_hash, password)
 
+    def is_gitea_bound(self) -> bool:
+        return self.gitea_user_id is not None
+
+    def set_gitea_tokens(
+        self,
+        access_token: str,
+        refresh_token: str | None,
+        expires_at: datetime | None,
+    ) -> None:
+        self.gitea_token_encrypted = encrypt_token(access_token)
+        self.gitea_refresh_token_encrypted = encrypt_token(refresh_token) if refresh_token else None
+        self.gitea_token_expires_at = expires_at
+
+    def get_avatar_url(self):
+        """返回指向头像 API 的动态 URL；若未上传过头像则回退 avatar_url 字段。"""
+        if self.avatar_blob and self.avatar_mime_type:
+            ts = ""
+            if self.avatar_updated_at:
+                ts = f"?t={self.avatar_updated_at.timestamp()}"
+            return f"/api/users/avatar/{self.id}{ts}"
+        return self.avatar_url
+
     def to_dict(self):
         return {
             "id": self.id,
             "username": self.username,
             "email": self.email,
             "display_name": self.display_name,
-            "avatar_url": self.avatar_url,
+            "avatar_url": self.get_avatar_url(),
             "bio": self.bio,
             "website": self.website,
             "location": self.location,
             "reputation": self.reputation,
             "role": self.role,
             "is_active": self.is_active,
+            "email_verified_at": self.email_verified_at.isoformat() if self.email_verified_at else None,
             "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "gitea_bound": self.is_gitea_bound(),
         }
 
     def to_public_dict(self):
@@ -70,7 +101,7 @@ class User(db.Model):
             "id": self.id,
             "username": self.username,
             "display_name": self.display_name,
-            "avatar_url": self.avatar_url,
+            "avatar_url": self.get_avatar_url(),
             "bio": self.bio,
             "website": self.website,
             "location": self.location,

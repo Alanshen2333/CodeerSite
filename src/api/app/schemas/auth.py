@@ -27,3 +27,31 @@ class UpdateProfileSchema(Schema):
     bio = fields.Str(validate=validate.Length(max=500))
     website = fields.Str(validate=validate.Length(max=255))
     location = fields.Str(validate=validate.Length(max=100))
+    avatar_url = fields.Str(validate=validate.Length(max=500))
+
+
+class ChangePasswordSchema(Schema):
+    verification_code = fields.Str(required=True, validate=validate.Length(equal=6))
+    new_password = fields.Str(
+        required=True,
+        validate=validate.Length(min=6, max=128),
+    )
+
+
+class RequestEmailCodeSchema(Schema):
+    purpose = fields.Str(
+        required=True,
+        validate=validate.OneOf(["change_password", "disable_2fa", "recover_2fa"]),
+    )
+
+
+class OAuthAuthorizeSchema(Schema):
+    intent = fields.Str(
+        required=True,
+        validate=validate.OneOf(["bind", "login"]),
+    )
+
+
+class OAuthCallbackSchema(Schema):
+    code = fields.Str(required=True)
+    state = fields.Str(required=True)

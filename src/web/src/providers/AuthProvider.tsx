@@ -1,9 +1,14 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
-import api from "@/lib/api";
 import { getAccessToken, removeTokens, setTokens } from "@/lib/auth";
-import type { User, AuthResponse, LoginInput, RegisterInput } from "@/types/user";
+import {
+  getMe,
+  login as apiLogin,
+  register as apiRegister,
+  oauthCallback,
+} from "@/lib/api/auth";
+import type { User, LoginInput, RegisterInput, UpdateProfileInput } from "@/types/user";
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +16,9 @@ interface AuthContextType {
   login: (data: LoginInput) => Promise<void>;
   register: (data: RegisterInput) => Promise<void>;
   logout: () => void;
+  updateUser: (data: UpdateProfileInput) => Promise<User>;
+  refreshUser: () => Promise<User>;
+  oauthLogin: (code: string, state: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -27,12 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const token = getAccessToken();
     if (token) {
-      api
-        .get("/auth/me", { signal: controller.signal })
-        .then((res) => {
+      getMe()
+        .then((data) => {
           // Guard: only update if still mounted and still authenticated
           if (mountedRef.current && getAccessToken()) {
-            setUser(res.data.user);
+            setUser(data.user);
           }
         })
         .catch((err) => {
@@ -54,15 +61,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (data: LoginInput) => {
-    const res = await api.post<AuthResponse>("/auth/login", data);
-    setTokens(res.data.access_token, res.data.refresh_token);
-    setUser(res.data.user);
+    const res = await apiLogin(data);
+    setTokens(res.access_token, res.refresh_token);
+    setUser(res.user);
   }, []);
 
   const register = useCallback(async (data: RegisterInput) => {
-    const res = await api.post<AuthResponse>("/auth/register", data);
-    setTokens(res.data.access_token, res.data.refresh_token);
-    setUser(res.data.user);
+    const res = await apiRegister(data);
+    setTokens(res.access_token, res.refresh_token);
+    setUser(res.user);
   }, []);
 
   const logout = useCallback(() => {
@@ -70,8 +77,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback(async (data: UpdateProfileInput) => {
+    const { user: updated } = await import("@/lib/api/auth").then((m) => m.updateMe(data));
+    setUser(updated);
+    return updated;
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const { user: refreshed } = await getMe();
+    setUser(refreshed);
+    return refreshed;
+  }, []);
+
+  const oauthLogin = useCallback(async (code: string, state: string) => {
+    const res = await oauthCallback(code, state);
+    if (res.access_token && res.refresh_token) {
+      setTokens(res.access_token, res.refresh_token);
+    }
+    setUser(res.user);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, logout, updateUser, refreshUser, oauthLogin }}
+    >
       {children}
     </AuthContext.Provider>
   );

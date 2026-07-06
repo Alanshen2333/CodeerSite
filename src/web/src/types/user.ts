@@ -10,9 +10,24 @@ export interface User {
   reputation: number;
   role: "user" | "moderator" | "admin";
   is_active: boolean;
+  gitea_bound?: boolean;
   last_login_at: string | null;
   created_at: string | null;
   updated_at: string | null;
+}
+
+export interface OAuthAuthorizeResponse {
+  authorization_url: string;
+}
+
+export interface OAuthCallbackResponse {
+  user: User;
+  access_token?: string;
+  refresh_token?: string;
+}
+
+export interface GitCredentialsResponse {
+  clone_url_with_credentials: string;
 }
 
 export interface PublicUser {
@@ -44,4 +59,34 @@ export interface RegisterInput {
   email: string;
   password: string;
   display_name?: string;
+}
+
+export interface UpdateProfileInput {
+  display_name?: string;
+  bio?: string;
+  website?: string;
+  location?: string;
+  avatar_url?: string;
+}
+
+export interface ChangePasswordInput {
+  verification_code: string;
+  new_password: string;
+}
+
+export type EmailCodePurpose = "change_password" | "disable_2fa" | "recover_2fa";
+
+export interface SshKey {
+  id: string;
+  title: string;
+  key_type: string;
+  fingerprint: string;
+  gitea_key_id?: string | null;
+  last_used_at: string | null;
+  created_at: string | null;
+}
+
+export interface CreateSshKeyInput {
+  title: string;
+  public_key: string;
 }

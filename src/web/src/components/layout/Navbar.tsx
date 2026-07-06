@@ -16,6 +16,7 @@ import {
   PlusOutlined,
   SunOutlined,
   MoonOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -41,6 +42,12 @@ export default function Navbar() {
         icon: <BellOutlined />,
         label: "通知",
         onClick: () => router.push("/notifications"),
+      },
+      {
+        key: "settings",
+        icon: <SettingOutlined />,
+        label: "账号设置",
+        onClick: () => router.push("/settings/account"),
       },
       { type: "divider" as const },
       {
