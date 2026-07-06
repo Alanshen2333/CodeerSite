@@ -14,8 +14,11 @@ class AnswerSchema(Schema):
     updated_at = fields.Str(dump_only=True)
 
 
+UUID_RE = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+
+
 class AnswerCreateSchema(Schema):
-    question_id = fields.Str(required=True)
+    question_id = fields.Str(required=True, validate=validate.Regexp(UUID_RE, error="Invalid question_id format."))
     body = fields.Str(required=True, validate=validate.Length(min=10))
 
 

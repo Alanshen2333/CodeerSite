@@ -10,6 +10,8 @@ def search():
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify(error="Validation Error", message="Query parameter 'q' is required."), 400
+    if len(q) < 2 or len(q) > 100:
+        return jsonify(error="Validation Error", message="Query must be 2-100 characters."), 400
 
     source_type = request.args.get("type")
     page = request.args.get("page", 1, type=int)

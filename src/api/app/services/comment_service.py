@@ -10,6 +10,13 @@ from app.services.notification_service import NotificationService
 class CommentService:
     @staticmethod
     def create_comment(user_id: str, body: str, target_type: str, target_id: str) -> Comment:
+        model_map = {"question": Question, "answer": Answer, "issue": Issue}
+        if target_type not in model_map:
+            raise ValueError(f"Invalid target_type: {target_type}")
+        target = db.session.get(model_map[target_type], target_id)
+        if not target:
+            raise ValueError(f"{target_type} not found.")
+
         comment = Comment(
             user_id=user_id,
             body=body,

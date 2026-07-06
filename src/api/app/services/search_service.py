@@ -80,8 +80,9 @@ class SearchService:
             total = col.count_documents(query_filter)
             cursor = col.find(query_filter)
             if q:
-                cursor = cursor.sort([("score", {"$meta": "textScore"})])
-            cursor = cursor.sort("created_at", -1)
+                cursor = cursor.sort([("score", {"$meta": "textScore"}), ("created_at", -1)])
+            else:
+                cursor = cursor.sort("created_at", -1)
             skip = (page - 1) * per_page
             cursor = cursor.skip(skip).limit(per_page)
             items = [{"doc_id": d.get("doc_id"), "source_type": d.get("source_type"),

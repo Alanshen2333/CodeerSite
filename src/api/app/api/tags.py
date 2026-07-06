@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from app.extensions import db
-from app.models.tag import Tag
+from marshmallow import ValidationError
 from app.schemas.tag import TagCreateSchema
 from app.services.tag_service import TagService
 
@@ -45,22 +44,16 @@ def create_tag():
     """Create a new tag (authenticated users)."""
     try:
         data = TagCreateSchema().load(request.get_json())
-    except Exception as e:
-        return jsonify(error="Validation Error", messages=str(e)), 422
+    except ValidationError as e:
+        return jsonify(error="Validation Error", messages=e.messages), 422
 
-    # Check if tag already exists
-    existing = Tag.query.filter_by(name=data["name"].strip().lower()).first()
-    if existing:
-        return jsonify(error="Conflict", message="Tag already exists."), 409
+    try:
+        tag = TagService.create_tag(
+            data["name"],
+            description=data.get("description"),
+            color=data.get("color", "#1677ff"),
+        )
+    except ValueError as e:
+        return jsonify(error="Conflict", message=str(e)), 409
 
-    # Create tag
-    slug = TagService._slugify(data["name"].strip().lower())
-    tag = Tag(
-        name=data["name"].strip().lower(),
-        slug=slug,
-        description=data.get("description"),
-        color=data.get("color", "#1677ff"),
-    )
-    db.session.add(tag)
-    db.session.commit()
     return jsonify(tag=tag.to_dict()), 201
