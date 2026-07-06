@@ -22,9 +22,11 @@ def register_blueprints(app):
     from app.api.notifications import notifications_bp
     from app.api.admin import admin_bp
     from app.api.badges import badges_bp
+    from app.api.stats import stats_bp
     from app.api.docs import docs_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(stats_bp, url_prefix="/api/stats")
     app.register_blueprint(users_bp, url_prefix="/api/users")
     app.register_blueprint(tags_bp, url_prefix="/api/tags")
     app.register_blueprint(questions_bp, url_prefix="/api/questions")
