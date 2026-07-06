@@ -1,10 +1,9 @@
 import random
-import smtplib
 import string
 from datetime import datetime, timezone, timedelta
-from email.message import EmailMessage
 from flask import current_app
 from app.extensions import mongo_db
+from app.services.email_service import EmailService
 
 
 class EmailCodeService:
@@ -75,7 +74,7 @@ class EmailCodeService:
 
         subject = "Codeersite 验证码"
         body = f"你的验证码是：{code}，{ttl // 60} 分钟内有效。请勿泄露给他人。"
-        cls._send_email(email, subject, body, code)
+        EmailService.send(email, subject, body)
         return code
 
     @classmethod
@@ -94,37 +93,3 @@ class EmailCodeService:
         cls._mark_used(key)
         return True
 
-    @classmethod
-    def _send_email(cls, to: str, subject: str, body: str, code: str):
-        """根据 MAIL_DRIVER 选择发送方式。"""
-        driver = current_app.config.get("MAIL_DRIVER", "console").lower()
-        sender = current_app.config.get("MAIL_DEFAULT_SENDER", "noreply@codeersite.local")
-
-        if driver == "console":
-            current_app.logger.info(
-                "[EMAIL CODE] to=%s subject=%s code=%s", to, subject, code
-            )
-            return
-
-        if driver == "smtp":
-            msg = EmailMessage()
-            msg["From"] = sender
-            msg["To"] = to
-            msg["Subject"] = subject
-            msg.set_content(body)
-
-            server = current_app.config.get("MAIL_SERVER", "localhost")
-            port = current_app.config.get("MAIL_PORT", 587)
-            username = current_app.config.get("MAIL_USERNAME")
-            password = current_app.config.get("MAIL_PASSWORD")
-            use_tls = current_app.config.get("MAIL_USE_TLS", True)
-
-            with smtplib.SMTP(server, port) as smtp:
-                if use_tls:
-                    smtp.starttls()
-                if username and password:
-                    smtp.login(username, password)
-                smtp.send_message(msg)
-            return
-
-        raise RuntimeError(f"Unsupported MAIL_DRIVER: {driver}")
