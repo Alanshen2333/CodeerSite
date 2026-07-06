@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Card, Form, Input, Button, Typography, message, Space } from "antd";
-import { MailOutlined, LockOutlined } from "@ant-design/icons";
+import { Card, Form, Input, Button, Typography, message, Space, Divider } from "antd";
+import { MailOutlined, LockOutlined, LoginOutlined } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
+import { getOAuthAuthorizeUrl } from "@/lib/api/auth";
 import type { LoginInput } from "@/types/user";
 
 const { Title, Text } = Typography;
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [giteaLoading, setGiteaLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
   const onFinish = async (values: LoginInput) => {
@@ -31,6 +33,22 @@ export default function LoginPage() {
       messageApi.error(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGiteaLogin = async () => {
+    setGiteaLoading(true);
+    try {
+      const { authorization_url } = await getOAuthAuthorizeUrl("login");
+      window.location.href = authorization_url;
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data
+              ?.message || "获取 Gitea 授权链接失败"
+          : "获取 Gitea 授权链接失败";
+      messageApi.error(msg);
+      setGiteaLoading(false);
     }
   };
 
@@ -70,7 +88,19 @@ export default function LoginPage() {
           </Form.Item>
         </Form>
 
-        <div className="text-center">
+        <Divider className="my-4">或</Divider>
+
+        <Button
+          block
+          size="large"
+          icon={<LoginOutlined />}
+          loading={giteaLoading}
+          onClick={handleGiteaLogin}
+        >
+          使用 Gitea 登录
+        </Button>
+
+        <div className="text-center mt-4">
           <Space>
             <Text>还没有账号？</Text>
             <Link href="/register">立即注册</Link>

@@ -43,3 +43,15 @@ class RequestEmailCodeSchema(Schema):
         required=True,
         validate=validate.OneOf(["change_password", "disable_2fa", "recover_2fa"]),
     )
+
+
+class OAuthAuthorizeSchema(Schema):
+    intent = fields.Str(
+        required=True,
+        validate=validate.OneOf(["bind", "login"]),
+    )
+
+
+class OAuthCallbackSchema(Schema):
+    code = fields.Str(required=True)
+    state = fields.Str(required=True)

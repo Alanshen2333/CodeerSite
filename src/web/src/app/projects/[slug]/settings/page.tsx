@@ -4,7 +4,12 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Input, Button, Card, Form, Radio, Select, Space, Popconfirm, Tag, Typography } from "antd";
 import { message } from "@/lib/message";
-import { DeleteOutlined, CodeOutlined, CopyOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  CodeOutlined,
+  CopyOutlined,
+  KeyOutlined,
+} from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   getProject,
@@ -16,6 +21,7 @@ import {
 } from "@/lib/api/projects";
 import { getRepo, createRepo, deleteRepo } from "@/lib/api/repos";
 import { searchUsers } from "@/lib/api/users";
+import { getGitCredentials } from "@/lib/api/auth";
 import type { Project, ProjectMember, Repo } from "@/types";
 import PageContainer from "@/components/layout/PageContainer";
 import LoadingState from "@/components/ui/LoadingState";
@@ -44,6 +50,7 @@ export default function SettingsPage() {
   const [repoLoading, setRepoLoading] = useState(true);
   const [creatingRepo, setCreatingRepo] = useState(false);
   const [deletingRepo, setDeletingRepo] = useState(false);
+  const [copyingCreds, setCopyingCreds] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -237,6 +244,25 @@ export default function SettingsPage() {
     navigator.clipboard.writeText(url).then(() => message.success("已复制"));
   };
 
+  const handleCopyWithCredentials = async () => {
+    if (!repo) return;
+    setCopyingCreds(true);
+    try {
+      const data = await getGitCredentials(repo.full_name);
+      await navigator.clipboard.writeText(data.clone_url_with_credentials);
+      message.success("已复制 HTTPS（含凭据）");
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data
+              ?.message || "复制失败"
+          : "复制失败";
+      message.error(msg);
+    } finally {
+      setCopyingCreds(false);
+    }
+  };
+
   return (
     <PageContainer size="narrow">
       <h2 className="text-xl font-semibold text-text mb-6">项目设置</h2>
@@ -314,6 +340,15 @@ export default function SettingsPage() {
                 onClick={() => handleCopyCloneUrl(repo.clone_url)}
               >
                 复制
+              </Button>
+              <Button
+                type="text"
+                size="small"
+                icon={<KeyOutlined />}
+                loading={copyingCreds}
+                onClick={handleCopyWithCredentials}
+              >
+                复制 HTTPS（含凭据）
               </Button>
             </div>
           </Space>

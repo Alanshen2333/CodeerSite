@@ -2,7 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { getAccessToken, removeTokens, setTokens } from "@/lib/auth";
-import { getMe, login as apiLogin, register as apiRegister } from "@/lib/api/auth";
+import {
+  getMe,
+  login as apiLogin,
+  register as apiRegister,
+  oauthCallback,
+} from "@/lib/api/auth";
 import type { User, LoginInput, RegisterInput, UpdateProfileInput } from "@/types/user";
 
 interface AuthContextType {
@@ -13,6 +18,7 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (data: UpdateProfileInput) => Promise<User>;
   refreshUser: () => Promise<User>;
+  oauthLogin: (code: string, state: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -83,8 +89,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return refreshed;
   }, []);
 
+  const oauthLogin = useCallback(async (code: string, state: string) => {
+    const res = await oauthCallback(code, state);
+    if (res.access_token && res.refresh_token) {
+      setTokens(res.access_token, res.refresh_token);
+    }
+    setUser(res.user);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, refreshUser }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, logout, updateUser, refreshUser, oauthLogin }}
+    >
       {children}
     </AuthContext.Provider>
   );

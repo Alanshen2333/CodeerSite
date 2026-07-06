@@ -11,6 +11,7 @@ import AvatarUploadCard from "@/components/settings/AvatarUploadCard";
 import PasswordChangeCard from "@/components/settings/PasswordChangeCard";
 import SshKeyList from "@/components/settings/SshKeyList";
 import AddSshKeyForm from "@/components/settings/AddSshKeyForm";
+import GiteaBindCard from "@/components/settings/GiteaBindCard";
 import { getSshKeys, deleteSshKey } from "@/lib/api/ssh-keys";
 import { message } from "@/lib/message";
 import type { SshKey } from "@/types/user";
@@ -72,6 +73,7 @@ export default function AccountSettingsPage() {
       <ProfileFormCard />
       <AvatarUploadCard />
       <PasswordChangeCard />
+      <GiteaBindCard />
 
       <Card title="SSH 公钥" className="mb-4" loading={keysLoading}>
         <AddSshKeyForm onSuccess={loadKeys} />

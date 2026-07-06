@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import secrets
 import string
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse, urlunparse
 
 import httpx
 from flask import current_app
@@ -96,6 +98,92 @@ class GiteaClient:
         headers = kwargs.pop("headers", {})
         headers.update(_admin_auth_headers())
         return GiteaClient._request(method, path, headers=headers, **kwargs)
+
+    @staticmethod
+    def _oauth_credentials() -> tuple[str, str] | None:
+        """返回 (client_id, client_secret)；未配置时返回 None。"""
+        client_id = current_app.config.get("GITEA_OAUTH_CLIENT_ID", "")
+        client_secret = current_app.config.get("GITEA_OAUTH_CLIENT_SECRET", "")
+        if not client_id or not client_secret:
+            return None
+        return client_id, client_secret
+
+    @staticmethod
+    def _oauth_token_url() -> str:
+        return f"{_base_url()}/login/oauth/access_token"
+
+    @staticmethod
+    def exchange_oauth_code(code: str, redirect_uri: str) -> dict | None:
+        """POST /login/oauth/access_token，grant_type=authorization_code。"""
+        creds = GiteaClient._oauth_credentials()
+        if creds is None:
+            current_app.logger.warning("未配置 GITEA_OAUTH_CLIENT_ID/SECRET，无法交换 code")
+            return None
+        client_id, client_secret = creds
+        resp = GiteaClient._request(
+            "POST",
+            "/login/oauth/access_token",
+            data={
+                "grant_type": "authorization_code",
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": code,
+                "redirect_uri": redirect_uri,
+            },
+            headers={"Accept": "application/json"},
+        )
+        if resp is None:
+            return None
+        if resp.status_code == 200:
+            return resp.json()
+        current_app.logger.warning(
+            "Gitea OAuth 交换 code 失败 %s: %s", resp.status_code, resp.text[:200]
+        )
+        return None
+
+    @staticmethod
+    def refresh_oauth_token(refresh_token: str) -> dict | None:
+        """POST /login/oauth/access_token，grant_type=refresh_token。"""
+        creds = GiteaClient._oauth_credentials()
+        if creds is None:
+            return None
+        client_id, client_secret = creds
+        resp = GiteaClient._request(
+            "POST",
+            "/login/oauth/access_token",
+            data={
+                "grant_type": "refresh_token",
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "refresh_token": refresh_token,
+            },
+            headers={"Accept": "application/json"},
+        )
+        if resp is None:
+            return None
+        if resp.status_code == 200:
+            return resp.json()
+        current_app.logger.warning(
+            "Gitea OAuth 刷新 token 失败 %s: %s", resp.status_code, resp.text[:200]
+        )
+        return None
+
+    @staticmethod
+    def get_oauth_user(access_token: str) -> dict | None:
+        """GET /api/v1/user，Authorization: token <access_token>。"""
+        resp = GiteaClient._request(
+            "GET",
+            "/api/v1/user",
+            headers={"Authorization": f"token {access_token}"},
+        )
+        if resp is None:
+            return None
+        if resp.status_code == 200:
+            return resp.json()
+        current_app.logger.warning(
+            "Gitea OAuth 获取用户失败 %s: %s", resp.status_code, resp.text[:200]
+        )
+        return None
 
     @staticmethod
     def admin_create_user(username: str, email: str, password: str | None = None) -> dict | None:
@@ -239,19 +327,13 @@ class GiteaClient:
     @staticmethod
     def for_user(user: User) -> UserGiteaClient | None:
         """构造当前用户的 Gitea 代理客户端。"""
-        if not user.gitea_token_encrypted:
+        if not user.gitea_token_encrypted and not user.gitea_refresh_token_encrypted:
             return None
-        token = decrypt_token(user.gitea_token_encrypted)
-        if not token:
-            # 尝试用 admin token 重新签发一次
-            token = GiteaClient._reissue_user_token(user)
-            if not token:
-                return None
-        return UserGiteaClient(user, token)
+        return UserGiteaClient(user)
 
     @staticmethod
     def _reissue_user_token(user: User) -> str | None:
-        """用 admin API 为用户重新签发 token 并加密保存。"""
+        """用 admin API 为用户重新签发 PAT 并加密保存（旧 PAT 兼容路径）。"""
         from app.extensions import db
 
         if not user.gitea_user_id or not user.username:
@@ -262,28 +344,76 @@ class GiteaClient:
         encrypted = encrypt_token(new_token)
         if encrypted:
             user.gitea_token_encrypted = encrypted
+            # PAT 无 refresh token
+            user.gitea_refresh_token_encrypted = None
+            user.gitea_token_expires_at = None
             db.session.commit()
         return new_token
 
+    @staticmethod
+    def get_authenticated_clone_url(user: User, repo_full_name: str) -> str | None:
+        """返回嵌入了 oauth2:<token>@ 的 HTTPS clone URL；无有效 token 返回 None。"""
+        client = GiteaClient.for_user(user)
+        if client is None:
+            return None
+        token = client._access_token()
+        if not token:
+            return None
+        base = _base_url()
+        if not base:
+            return None
+        parsed = urlparse(base)
+        netloc = f"oauth2:{token}@{parsed.netloc}"
+        return urlunparse((parsed.scheme, netloc, f"/{repo_full_name}.git", "", "", ""))
+
 
 class UserGiteaClient:
-    """以某个用户的 token 调用 Gitea API；支持 401 后重试一次。"""
+    """以某个用户的 token 调用 Gitea API；支持 OAuth refresh 与 401 后重试一次。"""
 
-    def __init__(self, user: User, token: str):
+    def __init__(self, user: User):
         self.user = user
-        self.token = token
 
-    def _headers(self) -> dict:
-        return {"Authorization": f"token {self.token}"}
+    def _access_token(self, force_refresh: bool = False) -> str | None:
+        """解密 access token；若过期则刷新；无 refresh token 时回退 admin 重签 PAT。"""
+        from app.extensions import db
+
+        token = decrypt_token(self.user.gitea_token_encrypted)
+        expires_at = self.user.gitea_token_expires_at
+
+        if token and not force_refresh:
+            if expires_at is None or expires_at > datetime.now(timezone.utc):
+                return token
+
+        refresh_token = decrypt_token(self.user.gitea_refresh_token_encrypted)
+        if refresh_token:
+            new_data = GiteaClient.refresh_oauth_token(refresh_token)
+            if new_data and new_data.get("access_token"):
+                access_token = new_data["access_token"]
+                new_refresh = new_data.get("refresh_token") or refresh_token
+                expires_in = new_data.get("expires_in")
+                new_expires_at = None
+                if expires_in:
+                    new_expires_at = datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
+                self.user.set_gitea_tokens(access_token, new_refresh, new_expires_at)
+                db.session.commit()
+                return access_token
+
+        # 无 refresh token 或刷新失败时回退 admin 重签 PAT
+        return GiteaClient._reissue_user_token(self.user)
+
+    def _headers(self, token: str) -> dict:
+        return {"Authorization": f"token {token}"}
 
     def request(self, method: str, path: str, **kwargs) -> httpx.Response | None:
-        """发起请求；401 时尝试重签发 token 并重试一次。"""
-        resp = GiteaClient._request(method, path, headers=self._headers(), **kwargs)
+        """发起请求；401 时强制刷新 token 并重试一次。"""
+        token = self._access_token()
+        if not token:
+            return None
+        resp = GiteaClient._request(method, path, headers=self._headers(token), **kwargs)
         if resp is not None and resp.status_code == 401:
-            new_token = GiteaClient._reissue_user_token(self.user)
-            if new_token and new_token != self.token:
-                self.token = new_token
-                resp = GiteaClient._request(method, path, headers=self._headers(), **kwargs)
+            new_token = self._access_token(force_refresh=True)
+            if new_token and new_token != token:
+                resp = GiteaClient._request(method, path, headers=self._headers(new_token), **kwargs)
         return resp
 
     def get(self, path: str, **kwargs) -> httpx.Response | None:

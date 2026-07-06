@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from app.extensions import db, bcrypt
+from app.utils.crypto import encrypt_token
 
 
 class User(db.Model):
@@ -27,6 +28,8 @@ class User(db.Model):
     # Gitea (VCS backend) —— token 加密存储，永不返回前端
     gitea_user_id = db.Column(db.String(36), index=True, nullable=True)
     gitea_token_encrypted = db.Column(db.Text, nullable=True)
+    gitea_refresh_token_encrypted = db.Column(db.Text, nullable=True)
+    gitea_token_expires_at = db.Column(db.DateTime(timezone=True), nullable=True)
     created_at = db.Column(
         db.DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -48,6 +51,19 @@ class User(db.Model):
 
     def check_password(self, password: str) -> bool:
         return bcrypt.check_password_hash(self.password_hash, password)
+
+    def is_gitea_bound(self) -> bool:
+        return self.gitea_user_id is not None
+
+    def set_gitea_tokens(
+        self,
+        access_token: str,
+        refresh_token: str | None,
+        expires_at: datetime | None,
+    ) -> None:
+        self.gitea_token_encrypted = encrypt_token(access_token)
+        self.gitea_refresh_token_encrypted = encrypt_token(refresh_token) if refresh_token else None
+        self.gitea_token_expires_at = expires_at
 
     def get_avatar_url(self):
         """返回指向头像 API 的动态 URL；若未上传过头像则回退 avatar_url 字段。"""
@@ -75,6 +91,7 @@ class User(db.Model):
             "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "gitea_bound": self.is_gitea_bound(),
         }
 
     def to_public_dict(self):

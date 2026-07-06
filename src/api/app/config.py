@@ -25,6 +25,14 @@ class Config:
     # 公开项目匿名读取仓库内容时使用的 token；未配置则回退到 ADMIN_TOKEN
     GITEA_PUBLIC_READONLY_TOKEN = os.getenv("GITEA_PUBLIC_READONLY_TOKEN", "")
 
+    # Gitea OAuth2 application（在 Gitea 管理后台 → Applications 创建）
+    GITEA_OAUTH_CLIENT_ID = os.getenv("GITEA_OAUTH_CLIENT_ID", "")
+    GITEA_OAUTH_CLIENT_SECRET = os.getenv("GITEA_OAUTH_CLIENT_SECRET", "")
+    GITEA_OAUTH_REDIRECT_URI = os.getenv(
+        "GITEA_OAUTH_REDIRECT_URI",
+        "http://localhost:3000/oauth/gitea",
+    )
+
     # 头像上传
     MAX_AVATAR_SIZE = int(os.getenv("MAX_AVATAR_SIZE", "2097152"))
 

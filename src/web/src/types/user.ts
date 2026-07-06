@@ -10,9 +10,24 @@ export interface User {
   reputation: number;
   role: "user" | "moderator" | "admin";
   is_active: boolean;
+  gitea_bound?: boolean;
   last_login_at: string | null;
   created_at: string | null;
   updated_at: string | null;
+}
+
+export interface OAuthAuthorizeResponse {
+  authorization_url: string;
+}
+
+export interface OAuthCallbackResponse {
+  user: User;
+  access_token?: string;
+  refresh_token?: string;
+}
+
+export interface GitCredentialsResponse {
+  clone_url_with_credentials: string;
 }
 
 export interface PublicUser {
