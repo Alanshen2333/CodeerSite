@@ -210,6 +210,33 @@ class GiteaClient:
         return resp.status_code in (204, 404)
 
     @staticmethod
+    def admin_add_user_ssh_key(username: str, title: str, key_text: str) -> dict | None:
+        """为指定用户添加 SSH 公钥；成功返回 Gitea key 对象，失败返回 None。"""
+        resp = GiteaClient._admin_request(
+            "POST",
+            f"/api/v1/admin/users/{username}/keys",
+            json={"title": title, "key": key_text},
+        )
+        if resp is None:
+            return None
+        if resp.status_code in (200, 201):
+            return resp.json()
+        current_app.logger.warning(
+            "Gitea 添加用户 SSH key 失败 %s: %s", resp.status_code, resp.text[:200]
+        )
+        return None
+
+    @staticmethod
+    def admin_delete_user_ssh_key(username: str, gitea_key_id: str) -> bool:
+        """删除指定用户的 SSH 公钥；404 视为成功。"""
+        resp = GiteaClient._admin_request(
+            "DELETE", f"/api/v1/admin/users/{username}/keys/{gitea_key_id}"
+        )
+        if resp is None:
+            return False
+        return resp.status_code in (204, 404)
+
+    @staticmethod
     def for_user(user: User) -> UserGiteaClient | None:
         """构造当前用户的 Gitea 代理客户端。"""
         if not user.gitea_token_encrypted:

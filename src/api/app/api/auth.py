@@ -17,9 +17,11 @@ from app.schemas.auth import (
     ChangePasswordSchema,
     RequestEmailCodeSchema,
 )
+from app.schemas.ssh_key import CreateSshKeySchema, SshKeySchema
 from app.services.auth_service import AuthService
 from app.services.email_code_service import EmailCodeService
 from app.services.user_service import UserService
+from app.services.ssh_key_service import SshKeyService
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -212,3 +214,59 @@ def upload_avatar():
         return jsonify(error="Internal Server Error", message=str(e)), 500
 
     return jsonify(avatar_url=user.get_avatar_url(), user=user.to_dict()), 200
+
+
+@auth_bp.route("/ssh-keys", methods=["GET"])
+@jwt_required()
+def list_ssh_keys():
+    """获取当前用户的 SSH 公钥列表。"""
+    user, error = _get_user_or_401()
+    if error:
+        return error
+    keys = SshKeyService.list_keys(user)
+    return jsonify(keys=SshKeySchema(many=True).dump(keys)), 200
+
+
+@auth_bp.route("/ssh-keys", methods=["POST"])
+@jwt_required()
+def create_ssh_key():
+    """添加 SSH 公钥并同步到 Gitea。"""
+    try:
+        data = CreateSshKeySchema().load(request.get_json())
+    except ValidationError as e:
+        return jsonify(error="Validation Error", messages=e.messages), 422
+
+    user, error = _get_user_or_401()
+    if error:
+        return error
+
+    try:
+        key = SshKeyService.add_key(user, data["title"], data["public_key"])
+    except ValueError as e:
+        return jsonify(error="Bad Request", message=str(e)), 400
+    except RuntimeError as e:
+        return jsonify(error="Service Unavailable", message=str(e)), 503
+    except Exception as e:
+        return jsonify(error="Internal Server Error", message=str(e)), 500
+
+    return jsonify(key=SshKeySchema().dump(key)), 201
+
+
+@auth_bp.route("/ssh-keys/<key_id>", methods=["DELETE"])
+@jwt_required()
+def delete_ssh_key(key_id: str):
+    """删除当前用户的指定 SSH 公钥。"""
+    user, error = _get_user_or_401()
+    if error:
+        return error
+
+    try:
+        SshKeyService.delete_key(user, key_id)
+    except ValueError as e:
+        return jsonify(error="Not Found", message=str(e)), 404
+    except RuntimeError as e:
+        return jsonify(error="Service Unavailable", message=str(e)), 503
+    except Exception as e:
+        return jsonify(error="Internal Server Error", message=str(e)), 500
+
+    return jsonify(message="公钥已删除。"), 200

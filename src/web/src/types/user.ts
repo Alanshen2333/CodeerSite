@@ -60,3 +60,18 @@ export interface ChangePasswordInput {
 }
 
 export type EmailCodePurpose = "change_password" | "disable_2fa" | "recover_2fa";
+
+export interface SshKey {
+  id: string;
+  title: string;
+  key_type: string;
+  fingerprint: string;
+  gitea_key_id?: string | null;
+  last_used_at: string | null;
+  created_at: string | null;
+}
+
+export interface CreateSshKeyInput {
+  title: string;
+  public_key: string;
+}
