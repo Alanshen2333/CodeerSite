@@ -4,11 +4,39 @@ from app.models.vote import Vote
 from app.models.question import Question
 from app.models.answer import Answer
 from app.models.user import User
+from app.services.atomic_counter import AtomicCounter
 from app.services.notification_service import NotificationService
 
 REPUTATION_UPVOTE_GAIN = 10
 REPUTATION_DOWNVOTE_LOSS = -2
 REPUTATION_ACCEPT_GAIN = 15
+
+TARGET_MODELS = {"question": Question, "answer": Answer}
+
+
+def _vote_count_delta(new_vote_type: str, old_vote_type: Optional[str]) -> int:
+    """根据新/旧投票类型计算目标 vote_count 应变化的量。"""
+    if old_vote_type is None:
+        return 1 if new_vote_type == "up" else -1
+    if old_vote_type == "up" and new_vote_type == "down":
+        return -2
+    if old_vote_type == "down" and new_vote_type == "up":
+        return 2
+    return 0
+
+
+def _reputation_delta(vote_type: str, old_vote_type: Optional[str], *, undo: bool) -> int:
+    """计算作者 reputation 应变化的量。"""
+    multiplier = -1 if undo else 1
+    if old_vote_type is None:
+        return (
+            REPUTATION_UPVOTE_GAIN if vote_type == "up" else REPUTATION_DOWNVOTE_LOSS
+        ) * multiplier
+    if old_vote_type == "up" and vote_type == "down":
+        return (REPUTATION_DOWNVOTE_LOSS - REPUTATION_UPVOTE_GAIN) * multiplier
+    if old_vote_type == "down" and vote_type == "up":
+        return (REPUTATION_UPVOTE_GAIN - REPUTATION_DOWNVOTE_LOSS) * multiplier
+    return 0
 
 
 class VoteService:
@@ -54,11 +82,15 @@ class VoteService:
 
         db.session.flush()
 
-        # Update target vote_count
-        VoteService._update_vote_count(target, vote_type, old_vote_type)
-
-        # Update reputations
-        VoteService._update_reputation_for_vote(target, vote_type, old_vote_type)
+        # 原子更新目标 vote_count 与作者 reputation
+        AtomicCounter.adjust(
+            TARGET_MODELS[target_type], target.id, "vote_count",
+            _vote_count_delta(vote_type, old_vote_type),
+        )
+        AtomicCounter.adjust(
+            User, target.author_id, "reputation",
+            _reputation_delta(vote_type, old_vote_type, undo=False),
+        )
 
         db.session.commit()
 
@@ -97,56 +129,18 @@ class VoteService:
 
     @staticmethod
     def _remove_vote(vote: Vote, target):
-        """Internal: remove a vote and adjust counts."""
-        # Undo reputation change
-        VoteService._update_reputation_for_vote(target, vote.vote_type, None, undo=True)
-
-        # Update vote_count
-        if vote.vote_type == "up":
-            target.vote_count = max(0, target.vote_count - 1)
-        else:
-            target.vote_count += 1
+        """Internal: remove a vote and adjust counts atomically."""
+        AtomicCounter.adjust(
+            User, target.author_id, "reputation",
+            _reputation_delta(vote.vote_type, None, undo=True),
+        )
+        AtomicCounter.adjust(
+            TARGET_MODELS[vote.target_type], vote.target_id, "vote_count",
+            -1 if vote.vote_type == "up" else 1,
+        )
 
         db.session.delete(vote)
         db.session.commit()
-
-    @staticmethod
-    def _update_vote_count(target, new_vote_type: str, old_vote_type: Optional[str]):
-        """Update target.vote_count based on vote change."""
-        if old_vote_type is None:
-            # New vote
-            if new_vote_type == "up":
-                target.vote_count += 1
-            else:
-                target.vote_count = max(0, target.vote_count - 1)
-        else:
-            # Changing vote
-            if old_vote_type == "up" and new_vote_type == "down":
-                target.vote_count = max(0, target.vote_count - 2)
-            elif old_vote_type == "down" and new_vote_type == "up":
-                target.vote_count += 2
-
-    @staticmethod
-    def _update_reputation_for_vote(target, vote_type: str, old_vote_type: Optional[str], undo: bool = False):
-        """Update the target author's reputation."""
-        author = db.session.get(User, target.author_id)
-        if not author:
-            return
-
-        multiplier = -1 if undo else 1
-
-        if old_vote_type is None:
-            # New vote
-            if vote_type == "up":
-                author.reputation += REPUTATION_UPVOTE_GAIN * multiplier
-            else:
-                author.reputation += REPUTATION_DOWNVOTE_LOSS * multiplier
-        else:
-            # Changing vote: reverse old, apply new
-            if old_vote_type == "up" and vote_type == "down":
-                author.reputation += (REPUTATION_DOWNVOTE_LOSS - REPUTATION_UPVOTE_GAIN) * multiplier
-            elif old_vote_type == "down" and vote_type == "up":
-                author.reputation += (REPUTATION_UPVOTE_GAIN - REPUTATION_DOWNVOTE_LOSS) * multiplier
 
     @staticmethod
     def _get_target(target_type: str, target_id: str):

@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from app.extensions import db
 from app.models.user import User
 from app.services.email_code_service import EmailCodeService
@@ -10,13 +11,9 @@ class AuthService:
     def register_user(username: str, email: str, password: str, display_name: str = None) -> User:
         """Register a new user. Raises ValueError on duplicate.
 
+        不再先查后插，直接依赖数据库唯一约束捕获 IntegrityError，消除并发注册竞态。
         Gitea 用户同步创建；失败不影响 Codeersite 注册成功，仅记录 warning。
         """
-        if User.query.filter_by(username=username).first():
-            raise ValueError("Username already taken.")
-        if User.query.filter_by(email=email).first():
-            raise ValueError("Email already registered.")
-
         user = User(
             username=username,
             email=email.lower(),
@@ -25,7 +22,16 @@ class AuthService:
         user.set_password(password)
 
         db.session.add(user)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError as exc:
+            db.session.rollback()
+            msg = str(exc).lower()
+            if "username" in msg:
+                raise ValueError("Username already taken.")
+            if "email" in msg:
+                raise ValueError("Email already registered.")
+            raise
 
         # Gitea 认证桥接：用户注册成功后同步创建 Gitea 用户并缓存 token
         if GiteaClient._is_available():

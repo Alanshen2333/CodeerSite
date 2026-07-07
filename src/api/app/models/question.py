@@ -12,6 +12,11 @@ question_tags = db.Table(
 
 class Question(db.Model):
     __tablename__ = "questions"
+    __table_args__ = (
+        db.CheckConstraint("vote_count >= 0", name="ck_questions_vote_count_nonnegative"),
+        db.CheckConstraint("answer_count >= 0", name="ck_questions_answer_count_nonnegative"),
+        db.CheckConstraint("view_count >= 0", name="ck_questions_view_count_nonnegative"),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = db.Column(db.String(300), nullable=False)

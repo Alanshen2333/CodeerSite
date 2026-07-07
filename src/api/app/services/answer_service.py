@@ -3,6 +3,7 @@ import mistune
 from app.extensions import db
 from app.models.answer import Answer
 from app.models.question import Question
+from app.services.atomic_counter import AtomicCounter
 from app.services.search_service import SearchService
 from app.services.notification_service import NotificationService
 
@@ -64,10 +65,10 @@ class AnswerService:
         db.session.delete(answer)
         db.session.flush()
         if question:
-            question.answer_count = max(0, question.answer_count - 1)
             # If this was the accepted answer, clear it
             if question.accepted_answer_id == answer.id:
                 question.accepted_answer_id = None
+            AtomicCounter.adjust(Question, question.id, "answer_count", -1)
         db.session.commit()
 
     @staticmethod

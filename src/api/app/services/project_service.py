@@ -1,26 +1,40 @@
 import re
-from typing import Optional, List
+from typing import Optional
+from sqlalchemy.exc import IntegrityError
 from app.extensions import db
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.star import Star
-from app.models.user import User
+from app.services.atomic_counter import AtomicCounter
 from app.services.search_service import SearchService
+
+MAX_SLUG_RETRIES = 100
 
 
 class ProjectService:
     @staticmethod
     def create_project(owner_id: str, name: str, description: str = None, visibility: str = "public") -> Project:
-        slug = ProjectService._generate_slug(name)
-        project = Project(
-            name=name.strip(),
-            slug=slug,
-            description=description,
-            owner_id=owner_id,
-            visibility=visibility,
-        )
-        db.session.add(project)
-        db.session.flush()
+        """创建项目；slug 冲突时依赖唯一约束重试，避免先查后插的竞态。"""
+        base_slug = ProjectService._generate_slug(name)
+        project = None
+
+        for attempt in range(MAX_SLUG_RETRIES):
+            slug = base_slug if attempt == 0 else f"{base_slug}-{attempt}"
+            project = Project(
+                name=name.strip(),
+                slug=slug,
+                description=description,
+                owner_id=owner_id,
+                visibility=visibility,
+            )
+            db.session.add(project)
+            try:
+                db.session.flush()
+                break
+            except IntegrityError:
+                db.session.rollback()
+                if attempt == MAX_SLUG_RETRIES - 1:
+                    raise
 
         # Owner becomes member with "owner" role
         member = ProjectMember(project_id=project.id, user_id=owner_id, role="owner")
@@ -142,20 +156,22 @@ class ProjectService:
         """切换 star。返回 True 表示已 star，False 表示已取消。
 
         真实去重靠 project_stars 表的 (user_id, project_id) 唯一约束；
-        star_count 为反范式缓存，随 star 增删同步。
+        star_count 为反范式缓存，使用 AtomicCounter 原子增减。
         """
         existing = Star.query.filter_by(user_id=user_id, project_id=project.id).first()
         if existing:
             db.session.delete(existing)
-            project.star_count = max(0, project.star_count - 1)
+            AtomicCounter.adjust(Project, project.id, "star_count", -1)
             db.session.commit()
+            AtomicCounter.refresh(project)
             ProjectService._index_to_search(project)
             return False
 
         star = Star(user_id=user_id, project_id=project.id)
         db.session.add(star)
-        project.star_count = project.star_count + 1
+        AtomicCounter.adjust(Project, project.id, "star_count", 1)
         db.session.commit()
+        AtomicCounter.refresh(project)
         ProjectService._index_to_search(project)
         return True
 
@@ -198,12 +214,7 @@ class ProjectService:
 
     @staticmethod
     def _generate_slug(name: str) -> str:
+        """生成基础 slug；唯一性由数据库唯一约束与 create_project 重试保证。"""
         slug = re.sub(r"[^\w\s-]", "", name.lower())
         slug = re.sub(r"[\s_]+", "-", slug)
-        slug = slug.strip("-") or "project"
-        base = slug
-        counter = 1
-        while Project.query.filter_by(slug=slug).first():
-            slug = f"{base}-{counter}"
-            counter += 1
-        return slug
+        return slug.strip("-") or "project"

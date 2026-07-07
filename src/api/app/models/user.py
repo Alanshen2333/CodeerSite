@@ -6,6 +6,9 @@ from app.utils.crypto import encrypt_token
 
 class User(db.Model):
     __tablename__ = "users"
+    __table_args__ = (
+        db.CheckConstraint("reputation >= 0", name="ck_users_reputation_nonnegative"),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     username = db.Column(db.String(50), unique=True, nullable=False, index=True)

@@ -1,5 +1,6 @@
 from typing import Optional
 import mistune
+from sqlalchemy import select
 from app.extensions import db
 from app.models.issue import Issue, TimeEntry
 from app.models.project import Project
@@ -18,18 +19,21 @@ class IssueService:
         priority: str = "medium", milestone_id: str = None,
         tag_ids: list = None, time_estimate: int = None,
     ) -> Issue:
-        # Generate next issue_number for this project
-        max_num = (
-            db.session.query(db.func.max(Issue.issue_number))
-            .filter_by(project_id=project_id)
-            .scalar()
-        ) or 0
+        # 使用 SELECT ... FOR UPDATE 锁定项目行，原子生成 issue_number
+        project = db.session.execute(
+            select(Project).where(Project.id == project_id).with_for_update()
+        ).scalar_one_or_none()
+        if not project:
+            raise ValueError("Project not found.")
+
+        issue_number = project.next_issue_number
+        project.next_issue_number += 1
 
         body_html = _md_renderer(body) if body else None
 
         issue = Issue(
             project_id=project_id,
-            issue_number=max_num + 1,
+            issue_number=issue_number,
             title=title.strip(),
             body=body,
             body_html=body_html,

@@ -5,6 +5,9 @@ from app.extensions import db
 
 class Answer(db.Model):
     __tablename__ = "answers"
+    __table_args__ = (
+        db.CheckConstraint("vote_count >= 0", name="ck_answers_vote_count_nonnegative"),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     question_id = db.Column(db.String(36), db.ForeignKey("questions.id", ondelete="CASCADE"), nullable=False, index=True)
