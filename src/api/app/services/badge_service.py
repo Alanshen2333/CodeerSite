@@ -66,19 +66,50 @@ class BadgeService:
                 }
         return None
 
+    # 成就条件仅允许「变量 操作符 整数」的简单比较，拒绝 eval 以防代码注入。
+    _CONDITION_RE = re.compile(
+        r"^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(>=|<=|==|>|<)\s*(\d+)\s*$"
+    )
+
     @staticmethod
     def _check_condition(condition: str, questions: int, answers: int,
                           accepted: int, reputation: int) -> bool:
+        if not isinstance(condition, str):
+            return False
+
+        match = BadgeService._CONDITION_RE.match(condition)
+        if not match:
+            return False
+
+        key, op, raw_value = match.groups()
+        allowed_keys = {"questions", "answers", "accepted", "reputation"}
+        if key not in allowed_keys:
+            return False
+
+        try:
+            value = int(raw_value)
+        except ValueError:
+            return False
+
         namespace = {
             "questions": questions,
             "answers": answers,
             "accepted": accepted,
             "reputation": reputation,
         }
-        try:
-            return bool(eval(condition, {"__builtins__": {}}, namespace))
-        except Exception:
-            return False
+        actual = namespace[key]
+
+        if op == ">=":
+            return actual >= value
+        if op == "<=":
+            return actual <= value
+        if op == ">":
+            return actual > value
+        if op == "<":
+            return actual < value
+        if op == "==":
+            return actual == value
+        return False
 
     # ── 自定义徽章定义 CRUD ─────────────────────────────
 

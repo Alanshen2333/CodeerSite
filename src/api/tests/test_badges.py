@@ -4,6 +4,7 @@ import pytest
 
 from app.extensions import db
 from app.models.user import User
+from app.services.badge_service import BadgeService
 
 
 def _login(client, username, email):
@@ -220,3 +221,57 @@ class TestAwardRevoke:
         assert r.status_code == 200
         awarded = r.get_json()["awarded_badges"]
         assert len(awarded) == 1
+
+
+class TestConditionEvaluator:
+    """成就条件解析器的安全与正确性测试。"""
+
+    def _check(self, condition, questions=0, answers=0, accepted=0, reputation=0):
+        return BadgeService._check_condition(
+            condition, questions, answers, accepted, reputation
+        )
+
+    def test_simple_gte_condition_passes(self):
+        assert self._check("questions >= 1", questions=1) is True
+        assert self._check("answers >= 10", answers=15) is True
+        assert self._check("accepted >= 50", accepted=50) is True
+        assert self._check("reputation >= 1000", reputation=2000) is True
+
+    def test_simple_gte_condition_fails(self):
+        assert self._check("questions >= 1", questions=0) is False
+        assert self._check("answers >= 10", answers=5) is False
+
+    def test_all_supported_operators(self):
+        assert self._check("questions == 5", questions=5) is True
+        assert self._check("questions == 5", questions=4) is False
+        assert self._check("questions > 4", questions=5) is True
+        assert self._check("questions > 5", questions=5) is False
+        assert self._check("questions < 6", questions=5) is True
+        assert self._check("questions < 5", questions=5) is False
+        assert self._check("questions <= 5", questions=5) is True
+        assert self._check("questions <= 4", questions=5) is False
+
+    def test_whitespace_is_tolerated(self):
+        assert self._check("  questions   >=   1  ", questions=1) is True
+
+    def test_invalid_conditions_are_false(self):
+        # 变量不在白名单
+        assert self._check("__import__('os') >= 1") is False
+        assert self._check("open('/etc/passwd') >= 1") is False
+        assert self._check("unknown_key >= 1") is False
+        # 非法操作符 / 语法
+        assert self._check("questions != 1", questions=1) is False
+        assert self._check("questions = 1", questions=1) is False
+        assert self._check("questions >= 1 and answers >= 1", questions=1, answers=1) is False
+        assert self._check("questions") is False
+        assert self._check("") is False
+        assert self._check("1 + 1") is False
+        # 注入尝试
+        assert self._check("questions >= 1; __import__('os').system('rm -rf /')") is False
+        assert self._check("questions >= 1 or exec('x')") is False
+        assert self._check("().__class__.__bases__[0].__subclasses__() >= 1") is False
+
+    def test_non_string_condition_is_false(self):
+        assert self._check(None) is False
+        assert self._check(123) is False
+        assert self._check({"questions": 1}) is False
