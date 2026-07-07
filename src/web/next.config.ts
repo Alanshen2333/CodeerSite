@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["antd", "@ant-design/icons", "@ant-design/nextjs-registry"],
+  allowedDevOrigins: ["127.0.0.1"],
   async rewrites() {
     return [
       {

@@ -30,4 +30,8 @@ docker/volumes/
 
 # Alembic (keep versions, ignore compiled)
 *.pyc
-.claude/
+
+# Claude Code runtime files (skills are tracked, runtime artifacts ignored)
+.claude/*
+!.claude/skills/
+.claude/skills/run-codeersite/screenshot.png
