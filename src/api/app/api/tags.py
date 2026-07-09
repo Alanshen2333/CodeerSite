@@ -20,7 +20,7 @@ def list_tags():
         tags = TagService.search_tags(search, limit=per_page)
         return jsonify(tags=[t.to_dict() for t in tags]), 200
 
-    result = TagService.get_tags(sort=sort, page=page, per_page=per_page)
+    result = TagService.get_tags(sort_by=sort, page=page, per_page=per_page)
     return jsonify(
         tags=[t.to_dict() for t in result.items],
         total=result.total,
