@@ -5,6 +5,7 @@ from app.models.question import Question
 from app.models.tag import Tag
 from app.services.tag_service import TagService
 from app.services.search_service import SearchService
+from app.services.badge_service import BadgeService
 
 
 _md_renderer = mistune.create_markdown(escape=True, hard_wrap=True)
@@ -36,6 +37,7 @@ class QuestionService:
 
         db.session.commit()
         QuestionService._index_to_search(question)
+        BadgeService.auto_award_achievements(author_id)
         return question
 
     @staticmethod

@@ -6,6 +6,7 @@ from app.models.question import Question
 from app.services.atomic_counter import AtomicCounter
 from app.services.search_service import SearchService
 from app.services.notification_service import NotificationService
+from app.services.badge_service import BadgeService
 
 
 _md_renderer = mistune.create_markdown(escape=True, hard_wrap=True)
@@ -47,6 +48,7 @@ class AnswerService:
                 source_id=answer.id,
             )
 
+        BadgeService.auto_award_achievements(author_id)
         return answer
 
     @staticmethod
@@ -103,6 +105,7 @@ class AnswerService:
                 source_id=answer.id,
             )
 
+        BadgeService.auto_award_achievements(answer.author_id)
         return answer
 
     @staticmethod

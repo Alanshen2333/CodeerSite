@@ -6,6 +6,7 @@ from app.models.answer import Answer
 from app.models.user import User
 from app.services.atomic_counter import AtomicCounter
 from app.services.notification_service import NotificationService
+from app.services.badge_service import BadgeService
 
 REPUTATION_UPVOTE_GAIN = 10
 REPUTATION_DOWNVOTE_LOSS = -2
@@ -109,6 +110,7 @@ class VoteService:
                 source_id=target_id,
             )
 
+        BadgeService.auto_award_achievements(target.author_id)
         return vote
 
     @staticmethod

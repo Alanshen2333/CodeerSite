@@ -1,9 +1,13 @@
+import logging
 import re
 from app.extensions import db
 from app.models.user import User
 from app.models.question import Question
 from app.models.answer import Answer
 from app.models.badge import Badge, UserBadge
+from app.services.notification_service import NotificationService
+
+logger = logging.getLogger(__name__)
 
 BADGE_TIERS = [
     {"key": "newcomer", "name": "新人", "color": "#8c8c8c", "min_reputation": 0},
@@ -235,6 +239,78 @@ class BadgeService:
             .order_by(UserBadge.created_at.desc())
             .all()
         )
+
+    @staticmethod
+    def auto_award_achievements(user_id: str) -> list[dict]:
+        """检查用户是否解锁了新成就，自动发放徽章并通知。
+
+        在提问、回答、采纳、投票等操作后调用。幂等：已发放的成就不会重复发放。
+        失败时只 log + rollback，不影响主操作。
+        """
+        try:
+            user = db.session.get(User, user_id)
+            if not user:
+                return []
+
+            unlocked = BadgeService.get_user_achievements(user)
+            if not unlocked:
+                return []
+
+            # 查询用户已有的成就徽章 slug 集合
+            existing_keys = {
+                ub.badge.slug
+                for ub in (
+                    UserBadge.query
+                    .join(Badge)
+                    .filter(UserBadge.user_id == user_id, Badge.kind == "achievement")
+                    .all()
+                )
+            }
+
+            newly_awarded = []
+            for ach in unlocked:
+                if ach["key"] in existing_keys:
+                    continue
+
+                # 查找或创建成就 Badge 记录（kind=achievement）
+                badge = Badge.query.filter_by(slug=ach["key"]).first()
+                if not badge:
+                    badge = Badge(
+                        name=ach["name"],
+                        slug=ach["key"],
+                        icon=ach["icon"],
+                        kind="achievement",
+                    )
+                    db.session.add(badge)
+                    db.session.flush()
+
+                ub = UserBadge(
+                    user_id=user_id,
+                    badge_id=badge.id,
+                    reason=f"自动发放：{ach['condition']}",
+                )
+                db.session.add(ub)
+                newly_awarded.append(ach)
+
+            if newly_awarded:
+                db.session.commit()
+                username = user.username
+                for ach in newly_awarded:
+                    NotificationService.create(
+                        recipient_id=user_id,
+                        type_="achievement_unlocked",
+                        title=f"解锁成就：{ach['name']}",
+                        body=f"{ach['icon']} {ach['name']}",
+                        link=f"/users/{username}",
+                        source_type="badge",
+                        source_id=ach["key"],
+                    )
+
+            return newly_awarded
+        except Exception:
+            db.session.rollback()
+            logger.warning("auto_award_achievements failed for user %s", user_id, exc_info=True)
+            return []
 
     @staticmethod
     def _slugify(name: str) -> str:
