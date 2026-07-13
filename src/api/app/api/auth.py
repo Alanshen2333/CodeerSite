@@ -133,12 +133,8 @@ def update_me():
     if error:
         return error
 
-    for field, value in data.items():
-        if value is not None:
-            setattr(user, field, value)
-
     try:
-        db.session.commit()
+        UserService.update_profile(user, data)
     except Exception:
         db.session.rollback()
         raise
@@ -161,6 +157,8 @@ def request_email_code():
 
     try:
         EmailCodeService.send_code(user.email, data["purpose"])
+    except ValueError as e:
+        return jsonify(error="Too Many Requests", message=str(e)), 429
     except Exception as e:
         return jsonify(error="Internal Server Error", message=str(e)), 500
 
@@ -249,8 +247,6 @@ def create_ssh_key():
         key = SshKeyService.add_key(user, data["title"], data["public_key"])
     except ValueError as e:
         return jsonify(error="Bad Request", message=str(e)), 400
-    except RuntimeError as e:
-        return jsonify(error="Service Unavailable", message=str(e)), 503
     except Exception as e:
         return jsonify(error="Internal Server Error", message=str(e)), 500
 
@@ -260,13 +256,18 @@ def create_ssh_key():
 @auth_bp.route("/ssh-keys/<key_id>", methods=["DELETE"])
 @jwt_required()
 def delete_ssh_key(key_id: str):
-    """删除当前用户的指定 SSH 公钥。"""
+    """删除当前用户的指定 SSH 公钥。
+
+    Query: ?force=true -- Gitea 不可用时强制删除本地记录。
+    """
     user, error = _get_user_or_401()
     if error:
         return error
 
+    force = request.args.get("force", "").lower() in ("true", "1", "yes")
+
     try:
-        SshKeyService.delete_key(user, key_id)
+        SshKeyService.delete_key(user, key_id, force=force)
     except ValueError as e:
         return jsonify(error="Not Found", message=str(e)), 404
     except RuntimeError as e:
@@ -275,6 +276,26 @@ def delete_ssh_key(key_id: str):
         return jsonify(error="Internal Server Error", message=str(e)), 500
 
     return jsonify(message="公钥已删除。"), 200
+
+
+@auth_bp.route("/ssh-keys/<key_id>/sync", methods=["POST"])
+@jwt_required()
+def retry_ssh_key_sync(key_id: str):
+    """重试同步 SSH 公钥到 Gitea。"""
+    user, error = _get_user_or_401()
+    if error:
+        return error
+
+    try:
+        from app.models.user_ssh_key import UserSshKey
+        key = UserSshKey.query.filter_by(id=key_id, user_id=user.id).first()
+        if key is None:
+            return jsonify(error="Not Found", message="公钥不存在。"), 404
+        key = SshKeyService.retry_sync(key, user)
+    except Exception as e:
+        return jsonify(error="Internal Server Error", message=str(e)), 500
+
+    return jsonify(key=SshKeySchema().dump(key)), 200
 
 
 @auth_bp.route("/oauth/gitea/authorize", methods=["GET"])

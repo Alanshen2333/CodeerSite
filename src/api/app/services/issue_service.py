@@ -5,6 +5,7 @@ from app.extensions import db
 from app.models.issue import Issue, TimeEntry
 from app.models.project import Project
 from app.models.tag import Tag
+from app.services.milestone_service import MilestoneService
 from app.services.search_service import SearchService
 from app.services.notification_service import NotificationService
 
@@ -45,6 +46,8 @@ class IssueService:
         )
         db.session.add(issue)
         db.session.commit()
+        if milestone_id:
+            MilestoneService.recompute_counts(milestone_id)
         IssueService._index_to_search(issue)
 
         # 关联标签（复用全局 Tag，多对多）
@@ -73,6 +76,8 @@ class IssueService:
     @staticmethod
     def update_issue(issue: Issue, **kwargs) -> Issue:
         old_assignee_id = issue.assignee_id
+        old_milestone_id = issue.milestone_id
+        old_status = issue.status
         for field in ("title", "body", "assignee_id", "status", "priority",
                       "milestone_id", "time_estimate"):
             if field in kwargs and kwargs[field] is not None or field in kwargs:
@@ -87,6 +92,19 @@ class IssueService:
             issue.tags = Tag.query.filter(Tag.id.in_(tag_ids)).all() if tag_ids else []
 
         db.session.commit()
+
+        # Recompute milestone counts if milestone_id or status changed
+        new_milestone_id = issue.milestone_id
+        new_status = issue.status
+        affected = set()
+        if old_milestone_id:
+            affected.add(old_milestone_id)
+        if new_milestone_id:
+            affected.add(new_milestone_id)
+        if old_milestone_id != new_milestone_id or old_status != new_status:
+            for mid in affected:
+                MilestoneService.recompute_counts(mid)
+
         IssueService._index_to_search(issue)
 
         # Notify new assignee if changed
@@ -108,9 +126,12 @@ class IssueService:
 
     @staticmethod
     def delete_issue(issue: Issue):
+        milestone_id = issue.milestone_id
         IssueService._remove_from_search(issue)
         db.session.delete(issue)
         db.session.commit()
+        if milestone_id:
+            MilestoneService.recompute_counts(milestone_id)
 
     @staticmethod
     def get_issue(issue_id: str = None, project_id: str = None, issue_number: int = None) -> Optional[Issue]:

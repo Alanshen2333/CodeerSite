@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from marshmallow import ValidationError
 from flask_jwt_extended import jwt_required, get_current_user
 from app.models.user import User
 from app.models.question import Question
@@ -9,6 +10,7 @@ from app.schemas.badge import (
     BadgeCreateSchema, BadgeUpdateSchema, AwardSchema, RevokeSchema,
 )
 from app.services.badge_service import BadgeService
+from app.schemas.auth import AdminUserUpdateSchema
 from app.extensions import db
 
 admin_bp = Blueprint("admin", __name__)
@@ -77,11 +79,15 @@ def update_user(user_id):
     if not user:
         return jsonify(error="Not Found", message="User not found."), 404
 
-    data = request.get_json() or {}
-    if "role" in data and data["role"] in ("user", "moderator", "admin"):
+    try:
+        data = AdminUserUpdateSchema().load(request.get_json() or {})
+    except ValidationError as e:
+        return jsonify(error="Validation Error", messages=e.messages), 422
+
+    if data.get("role") is not None:
         user.role = data["role"]
-    if "is_active" in data:
-        user.is_active = bool(data["is_active"])
+    if data.get("is_active") is not None:
+        user.is_active = data["is_active"]
 
     db.session.commit()
     return jsonify(user=user.to_dict()), 200

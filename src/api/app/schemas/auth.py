@@ -55,3 +55,11 @@ class OAuthAuthorizeSchema(Schema):
 class OAuthCallbackSchema(Schema):
     code = fields.Str(required=True)
     state = fields.Str(required=True)
+
+class AdminUserUpdateSchema(Schema):
+    """Admin 更新用户时的字段白名单校验。"""
+    role = fields.Str(
+        validate=validate.OneOf(["user", "moderator", "admin"]),
+        load_default=None,
+    )
+    is_active = fields.Boolean(load_default=None)

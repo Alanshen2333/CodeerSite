@@ -13,3 +13,10 @@ class KanbanCardCreateSchema(Schema):
 class KanbanCardMoveSchema(Schema):
     column_id = fields.Str(required=True)
     position = fields.Int(required=True)
+
+class KanbanReorderSchema(Schema):
+    column_ids = fields.List(
+        fields.Str(required=True),
+        required=True,
+        validate=validate.Length(min=1),
+    )

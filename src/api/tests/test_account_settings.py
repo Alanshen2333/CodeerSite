@@ -218,7 +218,9 @@ class TestSshKeys:
             json={"title": "MacBook", "public_key": public_key},
             headers=auth_headers,
         )
-        assert resp.status_code == 503
+        assert resp.status_code == 201
+        data = resp.get_json()["key"]
+        assert data["sync_status"] == "pending"
 
     def test_delete_ssh_key_success(self, client, auth_headers, gitea_available, public_key):
         create_resp = client.post(

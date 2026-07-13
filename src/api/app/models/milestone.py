@@ -12,6 +12,8 @@ class Milestone(db.Model):
     description = db.Column(db.Text, nullable=True)
     due_date = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(10), default="open", nullable=False)  # open/closed
+    open_issues_count = db.Column(db.Integer, default=0, nullable=False)
+    closed_issues_count = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(
         db.DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -32,8 +34,8 @@ class Milestone(db.Model):
             "description": self.description,
             "due_date": self.due_date.isoformat() if self.due_date else None,
             "status": self.status,
-            "open_issues": sum(1 for i in self.issues if i.status != "closed") if self.issues else 0,
-            "closed_issues": sum(1 for i in self.issues if i.status == "closed") if self.issues else 0,
+            "open_issues": self.open_issues_count or 0,
+            "closed_issues": self.closed_issues_count or 0,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

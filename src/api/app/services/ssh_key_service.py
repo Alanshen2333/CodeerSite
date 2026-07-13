@@ -85,13 +85,14 @@ class SshKeyService:
 
     @staticmethod
     def add_key(user, title: str, key_text: str) -> UserSshKey:
-        """添加 SSH 公钥并同步到 Gitea。
+        """添加 SSH 公钥并同步到 Gitea（最终一致）。
 
         流程：
         1. 校验公钥格式。
         2. 检查 fingerprint 全局唯一。
-        3. 调用 Gitea admin API 添加公钥；Gitea 不可用时抛出 503。
-        4. 保存本地记录。
+        3. 先保存本地记录（sync_status=pending）。
+        4. 尝试同步到 Gitea；成功则更新 sync_status=synced，失败则标记 failed。
+        5. 无论同步结果如何，本地记录已保存，返回 201。
         """
         title = title.strip()
         if not title:
@@ -105,41 +106,66 @@ class SshKeyService:
         if existing:
             raise ValueError("该公钥已存在，请勿重复添加。")
 
-        # 同步到 Gitea
-        gitea_key_id = None
-        if GiteaClient._is_available():
-            gitea_resp = GiteaClient._admin_request(
-                "POST",
-                f"/api/v1/admin/users/{user.username}/keys",
-                json={"title": title, "key": f"{key_type} {key_data}"},
-            )
-            if gitea_resp is None:
-                raise RuntimeError("Gitea 服务暂不可用，请稍后重试。")
-            if gitea_resp.status_code not in (200, 201):
-                current_app.logger.warning(
-                    "Gitea 添加 SSH key 失败 %s: %s", gitea_resp.status_code, gitea_resp.text[:200]
-                )
-                raise RuntimeError("同步公钥到 Gitea 失败，请检查公钥格式或稍后重试。")
-            gitea_data = gitea_resp.json()
-            gitea_key_id = str(gitea_data.get("id"))
-        else:
-            raise RuntimeError("Gitea 服务未配置或不可达，暂无法添加 SSH 公钥。")
-
         key = UserSshKey(
             user_id=user.id,
             title=title,
             key_type=key_type,
             key_data=key_data,
             fingerprint=fingerprint,
-            gitea_key_id=gitea_key_id,
+            sync_status="pending",
         )
         db.session.add(key)
         db.session.commit()
+
+        # 尝试同步到 Gitea（失败不阻断）
+        SshKeyService._sync_to_gitea(key, user)
         return key
 
     @staticmethod
-    def delete_key(user, key_id: str) -> None:
-        """删除用户 SSH 公钥，并同步从 Gitea 移除。"""
+    def _sync_to_gitea(key: UserSshKey, user) -> None:
+        """尝试将公钥同步到 Gitea，更新 sync_status。"""
+        if not GiteaClient._is_available():
+            key.sync_status = "pending"
+            key.sync_error = "Gitea 服务不可用，待重试。"
+            db.session.commit()
+            return
+
+        gitea_resp = GiteaClient._admin_request(
+            "POST",
+            f"/api/v1/admin/users/{user.username}/keys",
+            json={"title": key.title, "key": f"{key.key_type} {key.key_data}"},
+        )
+        if gitea_resp is None:
+            key.sync_status = "pending"
+            key.sync_error = "Gitea 服务不可用，待重试。"
+        elif gitea_resp.status_code not in (200, 201):
+            current_app.logger.warning(
+                "Gitea 添加 SSH key 失败 %s: %s", gitea_resp.status_code, gitea_resp.text[:200]
+            )
+            key.sync_status = "failed"
+            key.sync_error = f"Gitea 返回 {gitea_resp.status_code}：{gitea_resp.text[:200]}"
+        else:
+            gitea_data = gitea_resp.json()
+            key.gitea_key_id = str(gitea_data.get("id"))
+            key.sync_status = "synced"
+            key.sync_error = None
+        db.session.commit()
+
+    @staticmethod
+    def retry_sync(key: UserSshKey, user) -> UserSshKey:
+        """重试同步公钥到 Gitea。"""
+        if key.sync_status == "synced":
+            return key
+        SshKeyService._sync_to_gitea(key, user)
+        return key
+
+    @staticmethod
+    def delete_key(user, key_id: str, force: bool = False) -> None:
+        """删除用户 SSH 公钥，并同步从 Gitea 移除。
+
+        - Gitea 可用且删除成功 -> 删除本地记录。
+        - Gitea 不可用或删除失败 -> 默认拒绝；force=True 时强制删除本地记录。
+        """
         key = UserSshKey.query.filter_by(id=key_id, user_id=user.id).first()
         if key is None:
             raise ValueError("公钥不存在。")
@@ -151,12 +177,16 @@ class SshKeyService:
             )
             # 404 表示 Gitea 端已不存在，视为成功
             if resp is None:
-                raise RuntimeError("Gitea 服务暂不可用，请稍后重试。")
-            if resp.status_code not in (204, 404):
+                if not force:
+                    raise RuntimeError("Gitea 服务暂不可用，无法同步删除。可使用 force=true 强制删除。")
+            elif resp.status_code not in (204, 404):
                 current_app.logger.warning(
                     "Gitea 删除 SSH key 失败 %s: %s", resp.status_code, resp.text[:200]
                 )
-                raise RuntimeError("从 Gitea 删除公钥失败，请稍后重试。")
+                if not force:
+                    raise RuntimeError("从 Gitea 删除公钥失败，可使用 force=true 强制删除。")
+        elif key.gitea_key_id and not GiteaClient._is_available() and not force:
+            raise RuntimeError("Gitea 服务不可用，无法同步删除。可使用 force=true 强制删除。")
 
         db.session.delete(key)
         db.session.commit()

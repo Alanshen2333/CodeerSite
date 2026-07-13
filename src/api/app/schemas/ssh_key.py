@@ -12,5 +12,7 @@ class SshKeySchema(Schema):
     key_type = fields.Str()
     fingerprint = fields.Str()
     gitea_key_id = fields.Str()
+    sync_status = fields.Str()
+    sync_error = fields.Str()
     last_used_at = fields.DateTime(dump_only=True)
     created_at = fields.DateTime(dump_only=True)

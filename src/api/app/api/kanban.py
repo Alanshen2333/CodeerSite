@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_current_user
 from marshmallow import ValidationError
-from app.schemas.kanban import KanbanColumnCreateSchema, KanbanCardCreateSchema, KanbanCardMoveSchema
+from app.schemas.kanban import KanbanColumnCreateSchema, KanbanCardCreateSchema, KanbanCardMoveSchema, KanbanReorderSchema
 from app.services.kanban_service import KanbanService
 from app.services.project_service import ProjectService
 
@@ -93,9 +93,15 @@ def reorder_columns(slug):
     if err: return err
     if err2 := _check_member(project, user): return err2
 
-    data = request.get_json() or {}
-    column_ids = data.get("column_ids", [])
-    KanbanService.reorder_columns(project.id, column_ids)
+    try:
+        data = KanbanReorderSchema().load(request.get_json() or {})
+    except ValidationError as e:
+        return jsonify(error="Validation Error", messages=e.messages), 422
+
+    try:
+        KanbanService.reorder_columns(project.id, data["column_ids"])
+    except ValueError as e:
+        return jsonify(error="Bad Request", message=str(e)), 400
     return jsonify(message="Columns reordered."), 200
 
 
@@ -171,5 +177,8 @@ def move_card(slug, card_id):
     except ValidationError as e:
         return jsonify(error="Validation Error", messages=e.messages), 422
 
-    card = KanbanService.move_card(card, data["column_id"], data["position"])
+    try:
+        card = KanbanService.move_card(card, data["column_id"], data["position"])
+    except ValueError as e:
+        return jsonify(error="Bad Request", message=str(e)), 400
     return jsonify(card=card.to_dict()), 200

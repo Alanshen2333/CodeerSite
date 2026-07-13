@@ -29,12 +29,17 @@ class EmailCodeService:
         return current_app.config.get("EMAIL_CODE_TTL", 300)
 
     @classmethod
+    def _cooldown_seconds(cls) -> int:
+        return current_app.config.get("EMAIL_CODE_COOLDOWN", 60)
+
+    @classmethod
     def _generate_code(cls) -> str:
         return "".join(random.choices(string.digits, k=6))
 
     @classmethod
     def _store(cls, key: str, code: str, expires_at: datetime):
-        data = {"code": code, "expires_at": expires_at, "used": False}
+        now = datetime.now(timezone.utc)
+        data = {"code": code, "expires_at": expires_at, "used": False, "sent_at": now}
         collection = cls._collection()
         if collection is not None:
             collection.replace_one(
@@ -65,11 +70,22 @@ class EmailCodeService:
 
     @classmethod
     def send_code(cls, email: str, purpose: str) -> str:
-        """生成验证码并发送邮件。返回发送的验证码（测试/调试用途）。"""
+        """生成验证码并发送邮件。返回发送的验证码（测试/调试用途）。
+
+        同一 email+purpose 在冷却期（默认 60s）内不可重发，
+        超出冷却期才允许再次发送。
+        """
+        key = cls._key(email, purpose)
+        existing = cls._fetch(key)
+        if existing and existing.get("sent_at"):
+            cooldown = cls._cooldown_seconds()
+            elapsed = (datetime.now(timezone.utc) - existing["sent_at"]).total_seconds()
+            if elapsed < cooldown:
+                raise ValueError(f"请 {int(cooldown - elapsed)} 秒后再试。")
+
         code = cls._generate_code()
         ttl = cls._ttl_seconds()
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
-        key = cls._key(email, purpose)
         cls._store(key, code, expires_at)
 
         subject = "Codeersite 验证码"

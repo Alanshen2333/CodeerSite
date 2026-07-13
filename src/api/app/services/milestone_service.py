@@ -1,7 +1,9 @@
 from typing import Optional
 from datetime import date
+from sqlalchemy import func, case
 from app.extensions import db
 from app.models.milestone import Milestone
+from app.models.issue import Issue
 
 
 class MilestoneService:
@@ -45,3 +47,20 @@ class MilestoneService:
             .order_by(Milestone.created_at.desc())
             .all()
         )
+
+    @staticmethod
+    def recompute_counts(milestone_id: str):
+        """用 SQL 聚合重算 milestone 的 open/closed issue 计数缓存。"""
+        m = db.session.get(Milestone, milestone_id)
+        if not m:
+            return
+        counts = db.session.query(
+            func.sum(
+                case((Issue.status != "closed", 1), else_=0)
+            ).label("open_count"),
+            func.sum(
+                case((Issue.status == "closed", 1), else_=0)
+            ).label("closed_count"),
+        ).filter_by(milestone_id=milestone_id).one()
+        m.open_issues_count = counts.open_count or 0
+        m.closed_issues_count = counts.closed_count or 0
