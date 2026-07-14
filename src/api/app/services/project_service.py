@@ -1,6 +1,10 @@
+import hashlib
 import re
 from typing import Optional
+
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
+
 from app.extensions import db
 from app.models.project import Project
 from app.models.project_member import ProjectMember
@@ -13,7 +17,9 @@ MAX_SLUG_RETRIES = 100
 
 class ProjectService:
     @staticmethod
-    def create_project(owner_id: str, name: str, description: str = None, visibility: str = "public") -> Project:
+    def create_project(
+        owner_id: str, name: str, description: str = None, visibility: str = "public"
+    ) -> Project:
         """创建项目；slug 冲突时依赖唯一约束重试，避免先查后插的竞态。"""
         base_slug = ProjectService._generate_slug(name)
         project = None
@@ -44,7 +50,12 @@ class ProjectService:
         return project
 
     @staticmethod
-    def update_project(project: Project, name: str = None, description: str = None, visibility: str = None) -> Project:
+    def update_project(
+        project: Project,
+        name: str = None,
+        description: str = None,
+        visibility: str = None,
+    ) -> Project:
         if name is not None:
             project.name = name.strip()
         if description is not None:
@@ -70,7 +81,9 @@ class ProjectService:
         return None
 
     @staticmethod
-    def get_projects(page: int = 1, per_page: int = 20, sort: str = "newest", visibility: str = None):
+    def get_projects(
+        page: int = 1, per_page: int = 20, sort: str = "newest", visibility: str = None
+    ):
         query = Project.query
         if visibility:
             query = query.filter_by(visibility=visibility)
@@ -93,16 +106,19 @@ class ProjectService:
             .subquery()
         )
         return (
-            Project.query
-            .filter(Project.id.in_(member_project_ids))
+            Project.query.filter(Project.id.in_(member_project_ids))
             .order_by(Project.updated_at.desc())
             .paginate(page=page, per_page=per_page, error_out=False)
         )
 
     # -- Members --
     @staticmethod
-    def add_member(project_id: str, user_id: str, role: str = "member") -> ProjectMember:
-        existing = ProjectMember.query.filter_by(project_id=project_id, user_id=user_id).first()
+    def add_member(
+        project_id: str, user_id: str, role: str = "member"
+    ) -> ProjectMember:
+        existing = ProjectMember.query.filter_by(
+            project_id=project_id, user_id=user_id
+        ).first()
         if existing:
             raise ValueError("User is already a member.")
 
@@ -113,7 +129,9 @@ class ProjectService:
 
     @staticmethod
     def remove_member(project_id: str, user_id: str):
-        member = ProjectMember.query.filter_by(project_id=project_id, user_id=user_id).first()
+        member = ProjectMember.query.filter_by(
+            project_id=project_id, user_id=user_id
+        ).first()
         if not member:
             raise ValueError("Member not found.")
         if member.role == "owner":
@@ -123,7 +141,9 @@ class ProjectService:
 
     @staticmethod
     def update_member_role(project_id: str, user_id: str, role: str) -> ProjectMember:
-        member = ProjectMember.query.filter_by(project_id=project_id, user_id=user_id).first()
+        member = ProjectMember.query.filter_by(
+            project_id=project_id, user_id=user_id
+        ).first()
         if not member:
             raise ValueError("Member not found.")
         if member.role == "owner":
@@ -134,30 +154,45 @@ class ProjectService:
 
     @staticmethod
     def get_member(project_id: str, user_id: str) -> Optional[ProjectMember]:
-        return ProjectMember.query.filter_by(project_id=project_id, user_id=user_id).first()
+        return ProjectMember.query.filter_by(
+            project_id=project_id, user_id=user_id
+        ).first()
 
     @staticmethod
     def get_members(project_id: str):
         return (
-            ProjectMember.query
-            .filter_by(project_id=project_id)
+            ProjectMember.query.filter_by(project_id=project_id)
             .order_by(ProjectMember.joined_at.asc())
             .all()
         )
 
     @staticmethod
     def get_user_role(project_id: str, user_id: str) -> Optional[str]:
-        member = ProjectMember.query.filter_by(project_id=project_id, user_id=user_id).first()
+        member = ProjectMember.query.filter_by(
+            project_id=project_id, user_id=user_id
+        ).first()
         return member.role if member else None
 
     # -- Star --
+    @staticmethod
+    def _star_lock_key(user_id: str, project_id: str) -> int:
+        """为 (user, project) 生成稳定的 64-bit advisory lock key。"""
+        s = f"{user_id}:{project_id}"
+        return int(hashlib.md5(s.encode()).hexdigest()[:15], 16)
+
     @staticmethod
     def toggle_star(project: Project, user_id: str) -> bool:
         """切换 star。返回 True 表示已 star，False 表示已取消。
 
         真实去重靠 project_stars 表的 (user_id, project_id) 唯一约束；
         star_count 为反范式缓存，使用 AtomicCounter 原子增减。
+        对 (user, project) 加 advisory lock 防止先查后写竞态。
         """
+        lock_key = ProjectService._star_lock_key(user_id, project.id)
+        db.session.execute(
+            text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key}
+        )
+
         existing = Star.query.filter_by(user_id=user_id, project_id=project.id).first()
         if existing:
             db.session.delete(existing)
@@ -204,8 +239,11 @@ class ProjectService:
             title=project.name,
             body_text=(project.description or "")[:1000],
             created_at=project.created_at,
-            extra={"slug": project.slug, "visibility": project.visibility,
-                   "star_count": project.star_count},
+            extra={
+                "slug": project.slug,
+                "visibility": project.visibility,
+                "star_count": project.star_count,
+            },
         )
 
     @staticmethod

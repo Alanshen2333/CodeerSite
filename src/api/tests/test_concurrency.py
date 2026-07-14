@@ -1,13 +1,10 @@
 """并发竞态测试。
 
-注意：当前测试环境仍为 SQLite，这些测试按 PostgreSQL 语义编写；
-在 SQLite 下跳过，待 Issue #25 迁移测试环境后启用。
+在真实 PostgreSQL 环境下验证锁与唯一约束行为。
 """
 
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
-import pytest
 
 from app.extensions import db
 from app.models.project import Project
@@ -21,13 +18,14 @@ from app.services.vote_service import VoteService
 
 
 class TestConcurrentVotes:
-    @pytest.mark.skip(reason="等待 Issue #25 将测试环境迁移到 PostgreSQL")
     def test_concurrent_upvotes_keep_count(self, app):
         """多个用户并发对同一问题投 upvote，最终计数准确。"""
         with app.app_context():
             author = User(
-                username="qauthor", email="qauthor@example.com",
-                password_hash="x", display_name="Q Author",
+                username="qauthor",
+                email="qauthor@example.com",
+                password_hash="x",
+                display_name="Q Author",
             )
             db.session.add(author)
             db.session.commit()
@@ -38,44 +36,53 @@ class TestConcurrentVotes:
             voters = []
             for i in range(10):
                 user = User(
-                    username=f"voter{i}", email=f"voter{i}@example.com",
-                    password_hash="x", display_name=f"Voter {i}",
+                    username=f"voter{i}",
+                    email=f"voter{i}@example.com",
+                    password_hash="x",
+                    display_name=f"Voter {i}",
                 )
                 db.session.add(user)
                 voters.append(user)
             db.session.commit()
+            voter_ids = [u.id for u in voters]
+            question_id = question.id
+            author_id = author.id
 
         errors = []
 
         def vote_worker(user_id):
             try:
                 with app.app_context():
-                    VoteService.vote(user_id, "up", "question", question.id)
+                    VoteService.vote(user_id, "up", "question", question_id)
             except Exception as exc:
                 errors.append(exc)
+            finally:
+                with app.app_context():
+                    db.session.remove()
 
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(vote_worker, u.id) for u in voters]
+            futures = [executor.submit(vote_worker, uid) for uid in voter_ids]
             for f in as_completed(futures):
                 f.result()
 
         assert not errors, errors
 
         with app.app_context():
-            q = db.session.get(Question, question.id)
-            author_refreshed = db.session.get(User, author.id)
+            q = db.session.get(Question, question_id)
+            author_refreshed = db.session.get(User, author_id)
             assert q.vote_count == 10
             assert author_refreshed.reputation == 10 * 10
 
 
 class TestConcurrentIssueNumber:
-    @pytest.mark.skip(reason="等待 Issue #25 将测试环境迁移到 PostgreSQL")
     def test_concurrent_create_issue_unique_numbers(self, app):
         """并发创建 Issue，编号唯一且连续。"""
         with app.app_context():
             owner = User(
-                username="issueowner", email="issueowner@example.com",
-                password_hash="x", display_name="Issue Owner",
+                username="issueowner",
+                email="issueowner@example.com",
+                password_hash="x",
+                display_name="Issue Owner",
             )
             db.session.add(owner)
             db.session.commit()
@@ -86,12 +93,16 @@ class TestConcurrentIssueNumber:
             creators = []
             for i in range(10):
                 user = User(
-                    username=f"creator{i}", email=f"creator{i}@example.com",
-                    password_hash="x", display_name=f"Creator {i}",
+                    username=f"creator{i}",
+                    email=f"creator{i}@example.com",
+                    password_hash="x",
+                    display_name=f"Creator {i}",
                 )
                 db.session.add(user)
                 creators.append(user)
             db.session.commit()
+            creator_ids = [u.id for u in creators]
+            project_id = project.id
 
         errors = []
         created_numbers = []
@@ -101,7 +112,7 @@ class TestConcurrentIssueNumber:
             try:
                 with app.app_context():
                     issue = IssueService.create_issue(
-                        project_id=project.id,
+                        project_id=project_id,
                         author_id=user_id,
                         title="并发 Issue",
                     )
@@ -109,9 +120,12 @@ class TestConcurrentIssueNumber:
                         created_numbers.append(issue.issue_number)
             except Exception as exc:
                 errors.append(exc)
+            finally:
+                with app.app_context():
+                    db.session.remove()
 
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(create_worker, u.id) for u in creators]
+            futures = [executor.submit(create_worker, uid) for uid in creator_ids]
             for f in as_completed(futures):
                 f.result()
 
@@ -122,7 +136,6 @@ class TestConcurrentIssueNumber:
 
 
 class TestConcurrentRegistration:
-    @pytest.mark.skip(reason="等待 Issue #25 将测试环境迁移到 PostgreSQL")
     def test_concurrent_same_username_creates_one_user(self, app):
         """并发注册相同用户名/邮箱，最终只应存在一条用户记录。"""
         errors = []
@@ -146,6 +159,9 @@ class TestConcurrentRegistration:
                     errors.append(exc)
             except Exception as exc:
                 errors.append(exc)
+            finally:
+                with app.app_context():
+                    db.session.remove()
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = [executor.submit(register_worker, i) for i in range(10)]
@@ -162,13 +178,14 @@ class TestConcurrentRegistration:
 
 
 class TestConcurrentStar:
-    @pytest.mark.skip(reason="等待 Issue #25 将测试环境迁移到 PostgreSQL")
     def test_concurrent_star_does_not_lose_count(self, app):
         """多个用户并发 star 同一项目，最终 star_count 准确。"""
         with app.app_context():
             owner = User(
-                username="starowner", email="starowner@example.com",
-                password_hash="x", display_name="Star Owner",
+                username="starowner",
+                email="starowner@example.com",
+                password_hash="x",
+                display_name="Star Owner",
             )
             db.session.add(owner)
             db.session.commit()
@@ -179,29 +196,37 @@ class TestConcurrentStar:
             starrers = []
             for i in range(10):
                 user = User(
-                    username=f"starrer{i}", email=f"starrer{i}@example.com",
-                    password_hash="x", display_name=f"Starrer {i}",
+                    username=f"starrer{i}",
+                    email=f"starrer{i}@example.com",
+                    password_hash="x",
+                    display_name=f"Starrer {i}",
                 )
                 db.session.add(user)
                 starrers.append(user)
             db.session.commit()
+            starrer_ids = [u.id for u in starrers]
+            project_id = project.id
 
         errors = []
 
         def star_worker(user_id):
             try:
                 with app.app_context():
-                    ProjectService.toggle_star(project, user_id)
+                    p = db.session.get(Project, project_id)
+                    ProjectService.toggle_star(p, user_id)
             except Exception as exc:
                 errors.append(exc)
+            finally:
+                with app.app_context():
+                    db.session.remove()
 
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(star_worker, u.id) for u in starrers]
+            futures = [executor.submit(star_worker, uid) for uid in starrer_ids]
             for f in as_completed(futures):
                 f.result()
 
         assert not errors, errors
 
         with app.app_context():
-            p = db.session.get(Project, project.id)
+            p = db.session.get(Project, project_id)
             assert p.star_count == 10

@@ -160,7 +160,9 @@ uv run pytest
 
 ## 测试约定
 
-- 测试位于 `src/api/tests/`；`conftest.py` 提供 `app`（test 配置 + in-memory SQLite `db.create_all`）、`client`、`auth_headers` fixtures。
+- 测试位于 `src/api/tests/`；`conftest.py` 提供 `app`（test 配置 + PostgreSQL `codeersite_test` 数据库，每个测试自动重建 schema）、`client`、`auth_headers` fixtures。
+- 本地运行测试前需先启动 PostgreSQL：`docker compose -f docker/docker-compose.dev.yml up -d postgres`。
+- 可通过环境变量 `DATABASE_URL` 覆盖测试数据库地址。
 - 集成测试为主：通过 test client 打真实 HTTP，用 `_login` / `_create_project` 等辅助函数构造前置数据，断言响应状态码与 JSON；相关用例聚合为 `class TestXxx:`。
 - 不连真实 PG / Mongo；外部依赖（如 Gitea）用 mock，勿打真实服务。
 - 运行：`uv run pytest`。

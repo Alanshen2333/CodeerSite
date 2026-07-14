@@ -42,6 +42,16 @@ curl -X POST http://localhost:5000/api/auth/register \
   -d '{"username":"demo","email":"demo@test.com","password":"demo123"}'
 ```
 
+### 测试
+
+```bash
+# 确保 PostgreSQL 已启动
+docker compose -f docker/docker-compose.dev.yml up -d postgres
+
+# 运行后端测试
+uv run pytest src/api/tests
+```
+
 ## 项目结构
 
 ```

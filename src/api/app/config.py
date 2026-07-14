@@ -3,6 +3,7 @@ import os
 
 class Config:
     """Base configuration."""
+
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
     SQLALCHEMY_DATABASE_URI = os.getenv(
         "DATABASE_URL",
@@ -10,7 +11,9 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/codeersite")
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "jwt-dev-secret-key-change-me-to-32-bytes-min")
+    JWT_SECRET_KEY = os.getenv(
+        "JWT_SECRET_KEY", "jwt-dev-secret-key-change-me-to-32-bytes-min"
+    )
     JWT_ACCESS_TOKEN_EXPIRES = 3600  # 1 hour
     JWT_REFRESH_TOKEN_EXPIRES = 2592000  # 30 days
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000")
@@ -68,8 +71,16 @@ class ProductionConfig(Config):
 
 class TestConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
-    MONGO_URI = "mongodb://localhost:27017/codeersite_test"
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "DATABASE_URL",
+        "postgresql+psycopg://codeersite:codeersite_dev@localhost:5432/codeersite_test",
+    )
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_size": 10,
+        "max_overflow": 30,
+        "pool_pre_ping": True,
+    }
+    MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/codeersite_test")
     MONGO_SERVER_SELECTION_TIMEOUT_MS = 100
     # 测试环境关闭 Gitea 桥接，但保留合法 Fernet key 以便测试加解密
     GITEA_URL = ""

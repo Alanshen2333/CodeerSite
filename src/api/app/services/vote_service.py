@@ -1,4 +1,8 @@
+import hashlib
 from typing import Optional
+
+from sqlalchemy import text
+
 from app.extensions import db
 from app.models.vote import Vote
 from app.models.question import Question
@@ -26,7 +30,9 @@ def _vote_count_delta(new_vote_type: str, old_vote_type: Optional[str]) -> int:
     return 0
 
 
-def _reputation_delta(vote_type: str, old_vote_type: Optional[str], *, undo: bool) -> int:
+def _reputation_delta(
+    vote_type: str, old_vote_type: Optional[str], *, undo: bool
+) -> int:
     """计算作者 reputation 应变化的量。"""
     multiplier = -1 if undo else 1
     if old_vote_type is None:
@@ -41,6 +47,12 @@ def _reputation_delta(vote_type: str, old_vote_type: Optional[str], *, undo: boo
 
 
 class VoteService:
+    @staticmethod
+    def _vote_lock_key(user_id: str, target_type: str, target_id: str) -> int:
+        """为 (user, target) 生成稳定的 64-bit advisory lock key。"""
+        s = f"{user_id}:{target_type}:{target_id}"
+        return int(hashlib.md5(s.encode()).hexdigest()[:15], 16)
+
     @staticmethod
     def vote(user_id: str, vote_type: str, target_type: str, target_id: str) -> Vote:
         """Cast a vote (up/down). If user already voted, update the vote_type.
@@ -57,6 +69,12 @@ class VoteService:
         # Cannot vote on own content
         if target.author_id == user_id:
             raise ValueError("You cannot vote on your own content.")
+
+        # 对 (user, target) 加 advisory lock，串行化同一用户同一目标的投票操作
+        lock_key = VoteService._vote_lock_key(user_id, target_type, target_id)
+        db.session.execute(
+            text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key}
+        )
 
         # Find existing vote or create new
         existing = Vote.query.filter_by(
@@ -85,11 +103,15 @@ class VoteService:
 
         # 原子更新目标 vote_count 与作者 reputation
         AtomicCounter.adjust(
-            TARGET_MODELS[target_type], target.id, "vote_count",
+            TARGET_MODELS[target_type],
+            target.id,
+            "vote_count",
             _vote_count_delta(vote_type, old_vote_type),
         )
         AtomicCounter.adjust(
-            User, target.author_id, "reputation",
+            User,
+            target.author_id,
+            "reputation",
             _reputation_delta(vote_type, old_vote_type, undo=False),
         )
 
@@ -99,7 +121,9 @@ class VoteService:
         if old_vote_type is None and target.author_id != user_id:
             target_type_label = "问题" if target_type == "question" else "回答"
             vote_label = "赞" if vote_type == "up" else "踩"
-            target_title = getattr(target, "title", "") or getattr(target, "body", "")[:100]
+            target_title = (
+                getattr(target, "title", "") or getattr(target, "body", "")[:100]
+            )
             NotificationService.create(
                 recipient_id=target.author_id,
                 type_="new_vote",
@@ -133,11 +157,15 @@ class VoteService:
     def _remove_vote(vote: Vote, target):
         """Internal: remove a vote and adjust counts atomically."""
         AtomicCounter.adjust(
-            User, target.author_id, "reputation",
+            User,
+            target.author_id,
+            "reputation",
             _reputation_delta(vote.vote_type, None, undo=True),
         )
         AtomicCounter.adjust(
-            TARGET_MODELS[vote.target_type], vote.target_id, "vote_count",
+            TARGET_MODELS[vote.target_type],
+            vote.target_id,
+            "vote_count",
             -1 if vote.vote_type == "up" else 1,
         )
 
@@ -159,7 +187,9 @@ class VoteService:
         ).first()
 
     @staticmethod
-    def get_user_votes_for_targets(user_id: str, target_type: str, target_ids: list) -> dict:
+    def get_user_votes_for_targets(
+        user_id: str, target_type: str, target_ids: list
+    ) -> dict:
         """Get user's votes for a list of targets. Returns {target_id: vote_type}."""
         votes = Vote.query.filter(
             Vote.user_id == user_id,
