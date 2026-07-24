@@ -8,7 +8,7 @@ Codeersite 融合 StackOverflow 式问答与 GitLab 式项目管理，面向开�
 
 - 后端：Flask 3 REST API（`src/api/`）
 - 前端：Next.js 16 + React 19 + Ant Design 6 + Tailwind CSS v4（`src/web/`）
-- 数据库：PostgreSQL 16（主存储）、MongoDB 7（搜索/通知/JWT 吊销）
+- 数据库：PostgreSQL 16（主存储，含全文搜索 search_documents）、MongoDB 7（通知/JWT 吊销）
 - 包管理：uv（Python）、pnpm（Node）
 
 ## 技术栈版本（以 lockfile 为准）
@@ -75,7 +75,8 @@ uv run pytest
 ### MongoDB 优雅降级
 
 - `init_extensions` 懒连接并 ping；失败则 `mongo_db=None` 且不阻断启动。
-- SearchService / NotificationService 各有 `_is_available()`，Mongo 不可用时返回空结果而非报错。
+- NotificationService 有 `_is_available()`，Mongo 不可用时返回空结果而非报错。
+- 搜索已迁 PostgreSQL（`search_documents` 表，tsvector + pg_trgm），索引写入与业务数据同事务，不依赖 Mongo；存量数据用 `scripts/reindex_search.py` 回填。
 
 ### 数据模型约定
 

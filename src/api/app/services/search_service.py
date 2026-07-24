@@ -1,96 +1,157 @@
 import logging
 from datetime import datetime, timezone
-from pymongo.errors import PyMongoError
-from app.extensions import get_mongo_db
+
+from sqlalchemy import func, or_, literal_column
+
+from app.extensions import db
+from app.models.search_document import SearchDocument
 
 logger = logging.getLogger(__name__)
 
+# tsvector 配置：必须用 regconfig 字面量。
+# 直接传字符串会被 psycopg 绑成 VARCHAR 参数，PG 无法解析
+# plainto_tsquery(varchar, varchar)（varchar→regconfig 非隐式转换）。
+_SIMPLE_CFG = literal_column("'simple'::regconfig")
+
 
 class SearchService:
-    """MongoDB full-text search across questions, answers, issues, and projects."""
+    """PostgreSQL 全文搜索 — 替代 MongoDB search_index 集合。
 
-    COLLECTION = "search_index"
+    使用 tsvector + pg_trgm 实现混合搜索：
+    - tsvector 支持英文/拼音/混合搜索（setweight 分层：标题 A > 标签 B > 正文 C）
+    - pg_trgm ILIKE 兜底中文子串（tsvector 对中文分词无效，中文命中靠 ILIKE）
+    """
+
     INDEXED_TYPES = ("question", "answer", "issue", "project")
-    _mongo_available: bool | None = None
 
-    @classmethod
-    def _is_available(cls) -> bool:
-        if cls._mongo_available is not None:
-            return cls._mongo_available
-        db = get_mongo_db()
-        if db is None:
-            cls._mongo_available = False
-            return False
-        try:
-            db.command("ping")
-            cls._mongo_available = True
-        except PyMongoError:
-            cls._mongo_available = False
-            logger.warning("MongoDB unavailable, search disabled.")
-        return cls._mongo_available
+    @staticmethod
+    def _escape_ilike(s: str) -> str:
+        """转义 ILIKE 通配符 % _ \\，防止用户输入干扰模式匹配。"""
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
-    @classmethod
-    def _collection(cls):
-        if not cls._is_available():
-            return None
-        return get_mongo_db()[cls.COLLECTION]
-
-    @classmethod
-    def index_document(cls, doc_id: str, source_type: str, title: str,
+    @staticmethod
+    def index_document(doc_id: str, source_type: str, title: str,
                        body_text: str, tags: list[str] | None = None,
                        created_at: datetime | None = None,
                        extra: dict | None = None):
-        try:
-            col = cls._collection()
-            if col is None:
-                return
-            if created_at is None:
-                created_at = datetime.now(timezone.utc)
-            doc = {"doc_id": doc_id, "source_type": source_type, "title": title,
-                   "body_text": body_text, "tags": tags or [],
-                   "created_at": created_at, "extra": extra or {}}
-            col.update_one({"doc_id": doc_id, "source_type": source_type},
-                           {"$set": doc}, upsert=True)
-        except PyMongoError:
-            pass
+        """索引/更新文档。只 flush 不 commit，由调用方事务统一提交。"""
+        # 查找已有记录
+        doc = SearchDocument.query.filter_by(
+            doc_id=doc_id, source_type=source_type
+        ).first()
 
-    @classmethod
-    def remove_document(cls, doc_id: str, source_type: str):
-        try:
-            col = cls._collection()
-            if col is None:
-                return
-            col.delete_one({"doc_id": doc_id, "source_type": source_type})
-        except PyMongoError:
-            pass
+        if created_at is None:
+            created_at = datetime.now(timezone.utc)
 
-    @classmethod
-    def search(cls, q: str, source_type: str | None = None,
+        if doc:
+            doc.title = title or ""
+            doc.body_text = body_text or ""
+            doc.tags = tags or []
+            doc.extra = extra or {}
+            doc.created_at = created_at
+        else:
+            doc = SearchDocument(
+                doc_id=doc_id,
+                source_type=source_type,
+                title=title or "",
+                body_text=body_text or "",
+                tags=tags or [],
+                extra=extra or {},
+                created_at=created_at,
+            )
+            db.session.add(doc)
+
+        # 构造 tsvector：title(A) || tags(B) || body_text(C)
+        # setweight 第二参数必须为 PostgreSQL "char" 类型，literal_column 避免被绑为 varchar
+        tag_text = " ".join(tags or [])
+        doc.search_vector = (
+            func.setweight(
+                func.to_tsvector(_SIMPLE_CFG, func.coalesce(title or "", "")),
+                literal_column("'A'::\"char\""),
+            )
+            .op("||")(
+                func.setweight(
+                    func.to_tsvector(_SIMPLE_CFG, func.coalesce(tag_text, "")),
+                    literal_column("'B'::\"char\""),
+                )
+            )
+            .op("||")(
+                func.setweight(
+                    func.to_tsvector(_SIMPLE_CFG, func.coalesce(body_text or "", "")),
+                    literal_column("'C'::\"char\""),
+                )
+            )
+        )
+
+        db.session.flush()
+
+    @staticmethod
+    def remove_document(doc_id: str, source_type: str):
+        """从索引中移除文档。不 commit，由调用方事务统一提交。"""
+        doc = SearchDocument.query.filter_by(
+            doc_id=doc_id, source_type=source_type
+        ).first()
+        if doc:
+            db.session.delete(doc)
+            db.session.flush()
+
+    @staticmethod
+    def search(q: str, source_type: str | None = None,
                page: int = 1, per_page: int = 20) -> dict:
+        """全文搜索，返回结构与旧版 MongoDB 实现一致。"""
         empty = {"items": [], "total": 0, "page": page, "pages": 0}
+
         try:
-            col = cls._collection()
-            if col is None:
-                return empty
-            query_filter: dict = {}
+            query = SearchDocument.query
+
+            # source_type 筛选（仅限已知类型，非法值忽略）
+            if source_type and source_type in SearchService.INDEXED_TYPES:
+                query = query.filter(SearchDocument.source_type == source_type)
+
             if q:
-                query_filter["$text"] = {"$search": q}
-            if source_type and source_type in cls.INDEXED_TYPES:
-                query_filter["source_type"] = source_type
-            total = col.count_documents(query_filter)
-            cursor = col.find(query_filter)
-            if q:
-                cursor = cursor.sort([("score", {"$meta": "textScore"}), ("created_at", -1)])
+                q_clean = q.strip()
+                escaped = SearchService._escape_ilike(q_clean)
+
+                # 匹配条件：tsvector 全文搜索 OR ILIKE 中文子串兜底
+                condition = or_(
+                    SearchDocument.search_vector.op("@@")(func.plainto_tsquery(_SIMPLE_CFG, q_clean)),
+                    SearchDocument.title.ilike(f"%{escaped}%", escape="\\"),
+                    SearchDocument.body_text.ilike(f"%{escaped}%", escape="\\"),
+                )
+                query = query.filter(condition)
+
+                # 排序：ts_rank_cd + similarity * 0.3 DESC（让纯中文命中也有相关度），再 created_at DESC
+                query = query.order_by(
+                    (
+                        func.ts_rank_cd(
+                            SearchDocument.search_vector,
+                            func.plainto_tsquery(_SIMPLE_CFG, q_clean),
+                        )
+                        + func.similarity(SearchDocument.title, q_clean) * 0.3
+                    ).desc(),
+                    SearchDocument.created_at.desc(),
+                )
             else:
-                cursor = cursor.sort("created_at", -1)
-            skip = (page - 1) * per_page
-            cursor = cursor.skip(skip).limit(per_page)
-            items = [{"doc_id": d.get("doc_id"), "source_type": d.get("source_type"),
-                      "title": d.get("title"), "body_text": d.get("body_text", "")[:200],
-                      "tags": d.get("tags", []),
-                      "created_at": d["created_at"].isoformat() if d.get("created_at") else None,
-                      "extra": d.get("extra", {})} for d in cursor]
+                # 无关键词：按创建时间倒序
+                query = query.order_by(SearchDocument.created_at.desc())
+
+            total = query.count()
+            rows = query.offset((page - 1) * per_page).limit(per_page).all()
+
+            items = [
+                {
+                    "doc_id": d.doc_id,
+                    "source_type": d.source_type,
+                    "title": d.title,
+                    "body_text": (d.body_text or "")[:200],
+                    "tags": d.tags or [],
+                    "created_at": d.created_at.isoformat() if d.created_at else None,
+                    "extra": d.extra or {},
+                }
+                for d in rows
+            ]
             pages = (total + per_page - 1) // per_page
             return {"items": items, "total": total, "page": page, "pages": pages}
-        except PyMongoError:
+        except Exception:
+            logger.exception("Search error")
             return empty
