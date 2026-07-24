@@ -42,6 +42,9 @@ def app():
 
     with app.app_context():
         db.drop_all()
+        # 创建 pg_trgm 扩展（用于 search_documents 的 GIN trgm 索引）
+        db.session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        db.session.commit()
         db.create_all()
         yield app
         db.session.remove()

@@ -8,9 +8,7 @@ search_bp = Blueprint("search", __name__)
 def search():
     """Global full-text search across questions, answers, issues, and projects."""
     q = request.args.get("q", "").strip()
-    if not q:
-        return jsonify(error="Validation Error", message="Query parameter 'q' is required."), 400
-    if len(q) < 2 or len(q) > 100:
+    if q and (len(q) < 2 or len(q) > 100):
         return jsonify(error="Validation Error", message="Query must be 2-100 characters."), 400
 
     source_type = request.args.get("type")

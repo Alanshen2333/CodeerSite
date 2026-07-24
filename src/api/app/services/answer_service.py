@@ -29,12 +29,13 @@ class AnswerService:
             body_html=body_html,
         )
         db.session.add(answer)
+        db.session.flush()  # 获取 answer.id
 
         # Update question answer_count
         question.answer_count = Question.answer_count + 1
 
-        db.session.commit()
         AnswerService._index_to_search(answer, question)
+        db.session.commit()
 
         # Notify question author
         if question.author_id != author_id:
@@ -55,8 +56,8 @@ class AnswerService:
     def update_answer(answer: Answer, body: str) -> Answer:
         answer.body = body
         answer.body_html = _md_renderer(body)
-        db.session.commit()
         AnswerService._index_to_search(answer, answer.question)
+        db.session.commit()
         return answer
 
     @staticmethod

@@ -35,8 +35,8 @@ class QuestionService:
             # Update usage counts
             TagService.update_usage_counts(tag_ids)
 
-        db.session.commit()
         QuestionService._index_to_search(question)
+        db.session.commit()
         BadgeService.auto_award_achievements(author_id)
         return question
 
@@ -58,8 +58,8 @@ class QuestionService:
             affected = set(old_tag_ids) | set(tag_ids)
             TagService.update_usage_counts(list(affected))
 
-        db.session.commit()
         QuestionService._index_to_search(question)
+        db.session.commit()
         return question
 
     @staticmethod

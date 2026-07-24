@@ -45,8 +45,8 @@ class ProjectService:
         # Owner becomes member with "owner" role
         member = ProjectMember(project_id=project.id, user_id=owner_id, role="owner")
         db.session.add(member)
-        db.session.commit()
         ProjectService._index_to_search(project)
+        db.session.commit()
         return project
 
     @staticmethod
@@ -62,8 +62,8 @@ class ProjectService:
             project.description = description
         if visibility is not None:
             project.visibility = visibility
-        db.session.commit()
         ProjectService._index_to_search(project)
+        db.session.commit()
         return project
 
     @staticmethod
@@ -197,17 +197,17 @@ class ProjectService:
         if existing:
             db.session.delete(existing)
             AtomicCounter.adjust(Project, project.id, "star_count", -1)
+            ProjectService._index_to_search(project)
             db.session.commit()
             AtomicCounter.refresh(project)
-            ProjectService._index_to_search(project)
             return False
 
         star = Star(user_id=user_id, project_id=project.id)
         db.session.add(star)
         AtomicCounter.adjust(Project, project.id, "star_count", 1)
+        ProjectService._index_to_search(project)
         db.session.commit()
         AtomicCounter.refresh(project)
-        ProjectService._index_to_search(project)
         return True
 
     @staticmethod

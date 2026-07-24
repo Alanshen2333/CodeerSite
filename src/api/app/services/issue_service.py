@@ -45,10 +45,11 @@ class IssueService:
             time_estimate=time_estimate,
         )
         db.session.add(issue)
+        db.session.flush()  # 获取 issue.id
+        IssueService._index_to_search(issue)
         db.session.commit()
         if milestone_id:
             MilestoneService.recompute_counts(milestone_id)
-        IssueService._index_to_search(issue)
 
         # 关联标签（复用全局 Tag，多对多）
         if tag_ids:
@@ -91,6 +92,7 @@ class IssueService:
             tag_ids = kwargs.get("tag_ids")
             issue.tags = Tag.query.filter(Tag.id.in_(tag_ids)).all() if tag_ids else []
 
+        IssueService._index_to_search(issue)
         db.session.commit()
 
         # Recompute milestone counts if milestone_id or status changed
@@ -104,8 +106,6 @@ class IssueService:
         if old_milestone_id != new_milestone_id or old_status != new_status:
             for mid in affected:
                 MilestoneService.recompute_counts(mid)
-
-        IssueService._index_to_search(issue)
 
         # Notify new assignee if changed
         new_assignee = kwargs.get("assignee_id")
