@@ -7,8 +7,6 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization
 
-from app.extensions import db
-from app.models.user_ssh_key import UserSshKey
 
 
 def _gen_key() -> str:
@@ -36,10 +34,14 @@ class TestSshKeySync:
         mock_gitea._is_available.return_value = True
         mock_gitea._admin_request.return_value = _mock_response(201, {"id": 42})
 
-        resp = client.post("/api/auth/ssh-keys", json={
-            "title": "My Key",
-            "public_key": _gen_key(),
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/auth/ssh-keys",
+            json={
+                "title": "My Key",
+                "public_key": _gen_key(),
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 201, resp.get_json()
         data = resp.get_json()["key"]
         assert data["sync_status"] == "synced"
@@ -50,10 +52,14 @@ class TestSshKeySync:
         """Gitea 不可用 -> 本地仍保存，sync_status=pending，返回 201。"""
         mock_gitea._is_available.return_value = False
 
-        resp = client.post("/api/auth/ssh-keys", json={
-            "title": "My Key",
-            "public_key": _gen_key(),
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/auth/ssh-keys",
+            json={
+                "title": "My Key",
+                "public_key": _gen_key(),
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 201, resp.get_json()
         data = resp.get_json()["key"]
         assert data["sync_status"] == "pending"
@@ -65,10 +71,14 @@ class TestSshKeySync:
         mock_gitea._is_available.return_value = True
         mock_gitea._admin_request.return_value = _mock_response(500)
 
-        resp = client.post("/api/auth/ssh-keys", json={
-            "title": "My Key",
-            "public_key": _gen_key(),
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/auth/ssh-keys",
+            json={
+                "title": "My Key",
+                "public_key": _gen_key(),
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 201, resp.get_json()
         data = resp.get_json()["key"]
         assert data["sync_status"] == "failed"
@@ -78,10 +88,14 @@ class TestSshKeySync:
     def test_retry_sync_success(self, mock_gitea, client, app, auth_headers):
         """pending 状态的 key 重试同步成功 -> synced。"""
         mock_gitea._is_available.return_value = False
-        resp = client.post("/api/auth/ssh-keys", json={
-            "title": "My Key",
-            "public_key": _gen_key(),
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/auth/ssh-keys",
+            json={
+                "title": "My Key",
+                "public_key": _gen_key(),
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 201
         key_id = resp.get_json()["key"]["id"]
 
@@ -99,10 +113,14 @@ class TestSshKeySync:
     def test_retry_sync_still_fails(self, mock_gitea, client, auth_headers):
         """重试同步仍然失败 -> sync_status=failed。"""
         mock_gitea._is_available.return_value = False
-        resp = client.post("/api/auth/ssh-keys", json={
-            "title": "My Key",
-            "public_key": _gen_key(),
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/auth/ssh-keys",
+            json={
+                "title": "My Key",
+                "public_key": _gen_key(),
+            },
+            headers=auth_headers,
+        )
         key_id = resp.get_json()["key"]["id"]
 
         mock_gitea._is_available.return_value = True
@@ -117,10 +135,14 @@ class TestSshKeySync:
         """Gitea 可用且删除成功 -> 本地删除。"""
         mock_gitea._is_available.return_value = True
         mock_gitea._admin_request.return_value = _mock_response(201, {"id": 42})
-        resp = client.post("/api/auth/ssh-keys", json={
-            "title": "My Key",
-            "public_key": _gen_key(),
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/auth/ssh-keys",
+            json={
+                "title": "My Key",
+                "public_key": _gen_key(),
+            },
+            headers=auth_headers,
+        )
         key_id = resp.get_json()["key"]["id"]
 
         mock_gitea._admin_request.return_value = _mock_response(204)
@@ -132,10 +154,14 @@ class TestSshKeySync:
         """Gitea 不可用且未 force -> 503。"""
         mock_gitea._is_available.return_value = True
         mock_gitea._admin_request.return_value = _mock_response(201, {"id": 42})
-        resp = client.post("/api/auth/ssh-keys", json={
-            "title": "My Key",
-            "public_key": _gen_key(),
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/auth/ssh-keys",
+            json={
+                "title": "My Key",
+                "public_key": _gen_key(),
+            },
+            headers=auth_headers,
+        )
         key_id = resp.get_json()["key"]["id"]
 
         mock_gitea._is_available.return_value = False
@@ -147,24 +173,34 @@ class TestSshKeySync:
         """Gitea 不可用但 force=true -> 强制删除本地记录。"""
         mock_gitea._is_available.return_value = True
         mock_gitea._admin_request.return_value = _mock_response(201, {"id": 42})
-        resp = client.post("/api/auth/ssh-keys", json={
-            "title": "My Key",
-            "public_key": _gen_key(),
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/auth/ssh-keys",
+            json={
+                "title": "My Key",
+                "public_key": _gen_key(),
+            },
+            headers=auth_headers,
+        )
         key_id = resp.get_json()["key"]["id"]
 
         mock_gitea._is_available.return_value = False
-        resp = client.delete(f"/api/auth/ssh-keys/{key_id}?force=true", headers=auth_headers)
+        resp = client.delete(
+            f"/api/auth/ssh-keys/{key_id}?force=true", headers=auth_headers
+        )
         assert resp.status_code == 200
 
     @patch("app.services.ssh_key_service.GiteaClient")
     def test_delete_unsynced_key_without_gitea(self, mock_gitea, client, auth_headers):
         """删除未同步的 key（无 gitea_key_id）-> 直接删除，无需 force。"""
         mock_gitea._is_available.return_value = False
-        resp = client.post("/api/auth/ssh-keys", json={
-            "title": "My Key",
-            "public_key": _gen_key(),
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/auth/ssh-keys",
+            json={
+                "title": "My Key",
+                "public_key": _gen_key(),
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 201
         key_id = resp.get_json()["key"]["id"]
 
@@ -176,10 +212,14 @@ class TestSshKeySync:
         """Gitea 可用但删除返回错误且未 force -> 503。"""
         mock_gitea._is_available.return_value = True
         mock_gitea._admin_request.return_value = _mock_response(201, {"id": 42})
-        resp = client.post("/api/auth/ssh-keys", json={
-            "title": "My Key",
-            "public_key": _gen_key(),
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/auth/ssh-keys",
+            json={
+                "title": "My Key",
+                "public_key": _gen_key(),
+            },
+            headers=auth_headers,
+        )
         key_id = resp.get_json()["key"]["id"]
 
         mock_gitea._admin_request.return_value = _mock_response(500)
@@ -191,12 +231,18 @@ class TestSshKeySync:
         """Gitea 可用但删除返回错误，force=true -> 强制删除。"""
         mock_gitea._is_available.return_value = True
         mock_gitea._admin_request.return_value = _mock_response(201, {"id": 42})
-        resp = client.post("/api/auth/ssh-keys", json={
-            "title": "My Key",
-            "public_key": _gen_key(),
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/auth/ssh-keys",
+            json={
+                "title": "My Key",
+                "public_key": _gen_key(),
+            },
+            headers=auth_headers,
+        )
         key_id = resp.get_json()["key"]["id"]
 
         mock_gitea._admin_request.return_value = _mock_response(500)
-        resp = client.delete(f"/api/auth/ssh-keys/{key_id}?force=true", headers=auth_headers)
+        resp = client.delete(
+            f"/api/auth/ssh-keys/{key_id}?force=true", headers=auth_headers
+        )
         assert resp.status_code == 200

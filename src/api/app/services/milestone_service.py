@@ -8,7 +8,9 @@ from app.models.issue import Issue
 
 class MilestoneService:
     @staticmethod
-    def create_milestone(project_id: str, title: str, description: str = None, due_date: date = None) -> Milestone:
+    def create_milestone(
+        project_id: str, title: str, description: str = None, due_date: date = None
+    ) -> Milestone:
         milestone = Milestone(
             project_id=project_id,
             title=title.strip(),
@@ -31,6 +33,7 @@ class MilestoneService:
     def delete_milestone(milestone: Milestone):
         # Nullify milestone_id on associated issues
         from app.models.issue import Issue
+
         Issue.query.filter_by(milestone_id=milestone.id).update({"milestone_id": None})
         db.session.delete(milestone)
         db.session.commit()
@@ -42,8 +45,7 @@ class MilestoneService:
     @staticmethod
     def get_milestones(project_id: str) -> list:
         return (
-            Milestone.query
-            .filter_by(project_id=project_id)
+            Milestone.query.filter_by(project_id=project_id)
             .order_by(Milestone.created_at.desc())
             .all()
         )
@@ -54,13 +56,17 @@ class MilestoneService:
         m = db.session.get(Milestone, milestone_id)
         if not m:
             return
-        counts = db.session.query(
-            func.sum(
-                case((Issue.status != "closed", 1), else_=0)
-            ).label("open_count"),
-            func.sum(
-                case((Issue.status == "closed", 1), else_=0)
-            ).label("closed_count"),
-        ).filter_by(milestone_id=milestone_id).one()
+        counts = (
+            db.session.query(
+                func.sum(case((Issue.status != "closed", 1), else_=0)).label(
+                    "open_count"
+                ),
+                func.sum(case((Issue.status == "closed", 1), else_=0)).label(
+                    "closed_count"
+                ),
+            )
+            .filter_by(milestone_id=milestone_id)
+            .one()
+        )
         m.open_issues_count = counts.open_count or 0
         m.closed_issues_count = counts.closed_count or 0

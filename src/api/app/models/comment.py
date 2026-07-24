@@ -9,7 +9,9 @@ class Comment(db.Model):
     __tablename__ = "comments"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
     body = db.Column(db.Text, nullable=False)
     target_type = db.Column(db.String(20), nullable=False, index=True)
     target_id = db.Column(db.String(36), nullable=False, index=True)

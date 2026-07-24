@@ -6,6 +6,7 @@
 3. Gitea 不可用时返回 None 而不是抛异常，调用方负责降级。
 4. 用户 token 失效（401）时尝试用 admin API 重新签发一次。
 """
+
 from __future__ import annotations
 
 import secrets
@@ -82,13 +83,17 @@ class GiteaClient:
             return False
 
     @staticmethod
-    def _request(method: str, path: str, *, headers: dict | None = None, **kwargs) -> httpx.Response | None:
+    def _request(
+        method: str, path: str, *, headers: dict | None = None, **kwargs
+    ) -> httpx.Response | None:
         """底层请求封装；网络/超时错误返回 None。"""
         url = _base_url()
         if not url:
             return None
         try:
-            return _get_client().request(method, f"{url}{path}", headers=headers, **kwargs)
+            return _get_client().request(
+                method, f"{url}{path}", headers=headers, **kwargs
+            )
         except Exception as exc:
             current_app.logger.warning("Gitea 请求失败 %s %s: %s", method, path, exc)
             return None
@@ -117,7 +122,9 @@ class GiteaClient:
         """POST /login/oauth/access_token，grant_type=authorization_code。"""
         creds = GiteaClient._oauth_credentials()
         if creds is None:
-            current_app.logger.warning("未配置 GITEA_OAUTH_CLIENT_ID/SECRET，无法交换 code")
+            current_app.logger.warning(
+                "未配置 GITEA_OAUTH_CLIENT_ID/SECRET，无法交换 code"
+            )
             return None
         client_id, client_secret = creds
         resp = GiteaClient._request(
@@ -186,7 +193,9 @@ class GiteaClient:
         return None
 
     @staticmethod
-    def admin_create_user(username: str, email: str, password: str | None = None) -> dict | None:
+    def admin_create_user(
+        username: str, email: str, password: str | None = None
+    ) -> dict | None:
         """同步创建 Gitea 用户；失败返回 None。"""
         if not password:
             password = _generate_password()
@@ -216,7 +225,9 @@ class GiteaClient:
     @staticmethod
     def admin_create_org(name: str) -> dict | None:
         """幂等创建 org；已存在时返回现有 org。"""
-        resp = GiteaClient._admin_request("POST", "/api/v1/orgs", json={"username": name})
+        resp = GiteaClient._admin_request(
+            "POST", "/api/v1/orgs", json={"username": name}
+        )
         if resp is None:
             return None
         if resp.status_code in (201, 200):
@@ -231,7 +242,9 @@ class GiteaClient:
         return None
 
     @staticmethod
-    def admin_create_user_token(username: str, token_name: str | None = None) -> str | None:
+    def admin_create_user_token(
+        username: str, token_name: str | None = None
+    ) -> str | None:
         """为指定用户创建 personal access token；返回 sha。
 
         注意：Gitea 的 /users/{username}/tokens 端点不接受 token auth，需用 basic auth；
@@ -241,9 +254,14 @@ class GiteaClient:
 
         auth = _admin_basic_auth()
         if auth is None:
-            current_app.logger.warning("未配置 GITEA_ADMIN_USER/PASS，无法创建用户 token")
+            current_app.logger.warning(
+                "未配置 GITEA_ADMIN_USER/PASS，无法创建用户 token"
+            )
             return None
-        name = token_name or f"codeersite-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}"
+        name = (
+            token_name
+            or f"codeersite-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}"
+        )
         resp = GiteaClient._request(
             "POST",
             f"/api/v1/users/{username}/tokens",
@@ -261,7 +279,9 @@ class GiteaClient:
         return None
 
     @staticmethod
-    def admin_create_repo(org: str, name: str, description: str | None = None, private: bool = False) -> dict | None:
+    def admin_create_repo(
+        org: str, name: str, description: str | None = None, private: bool = False
+    ) -> dict | None:
         """在指定 org 下创建仓库。"""
         payload = {
             "name": name,
@@ -269,7 +289,9 @@ class GiteaClient:
             "private": private,
             "default_branch": "main",
         }
-        resp = GiteaClient._admin_request("POST", f"/api/v1/orgs/{org}/repos", json=payload)
+        resp = GiteaClient._admin_request(
+            "POST", f"/api/v1/orgs/{org}/repos", json=payload
+        )
         if resp is None:
             return None
         if resp.status_code == 201:
@@ -393,7 +415,9 @@ class UserGiteaClient:
                 expires_in = new_data.get("expires_in")
                 new_expires_at = None
                 if expires_in:
-                    new_expires_at = datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
+                    new_expires_at = datetime.now(timezone.utc) + timedelta(
+                        seconds=int(expires_in)
+                    )
                 self.user.set_gitea_tokens(access_token, new_refresh, new_expires_at)
                 db.session.commit()
                 return access_token
@@ -409,11 +433,15 @@ class UserGiteaClient:
         token = self._access_token()
         if not token:
             return None
-        resp = GiteaClient._request(method, path, headers=self._headers(token), **kwargs)
+        resp = GiteaClient._request(
+            method, path, headers=self._headers(token), **kwargs
+        )
         if resp is not None and resp.status_code == 401:
             new_token = self._access_token(force_refresh=True)
             if new_token and new_token != token:
-                resp = GiteaClient._request(method, path, headers=self._headers(new_token), **kwargs)
+                resp = GiteaClient._request(
+                    method, path, headers=self._headers(new_token), **kwargs
+                )
         return resp
 
     def get(self, path: str, **kwargs) -> httpx.Response | None:

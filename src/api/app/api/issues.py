@@ -1,7 +1,11 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_current_user
 from marshmallow import ValidationError
-from app.schemas.issue import IssueCreateSchema, IssueUpdateSchema, TimeEntryCreateSchema
+from app.schemas.issue import (
+    IssueCreateSchema,
+    IssueUpdateSchema,
+    TimeEntryCreateSchema,
+)
 from app.services.issue_service import IssueService
 from app.services.project_service import ProjectService
 
@@ -19,7 +23,8 @@ def _get_project_or_404(slug: str):
 def list_issues(slug):
     """List issues for a project."""
     project, err = _get_project_or_404(slug)
-    if err: return err
+    if err:
+        return err
 
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
@@ -35,9 +40,15 @@ def list_issues(slug):
         milestone_id = None
 
     result = IssueService.get_issues(
-        project_id=project.id, page=page, per_page=per_page,
-        status=status, priority=priority, assignee_id=assignee_id,
-        milestone_id=milestone_id, tag_id=tag_id, sort=sort,
+        project_id=project.id,
+        page=page,
+        per_page=per_page,
+        status=status,
+        priority=priority,
+        assignee_id=assignee_id,
+        milestone_id=milestone_id,
+        tag_id=tag_id,
+        sort=sort,
     )
     stats = IssueService.get_issue_stats(project.id)
     return jsonify(
@@ -55,7 +66,8 @@ def create_issue(slug):
     """Create a new issue."""
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
+    if err:
+        return err
 
     role = ProjectService.get_user_role(project.id, user.id)
     if not role:
@@ -84,7 +96,8 @@ def create_issue(slug):
 def get_issue(slug, issue_number):
     """Get a single issue."""
     project, err = _get_project_or_404(slug)
-    if err: return err
+    if err:
+        return err
 
     issue = IssueService.get_issue(project_id=project.id, issue_number=issue_number)
     if not issue:
@@ -98,7 +111,8 @@ def update_issue(slug, issue_number):
     """Update an issue."""
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
+    if err:
+        return err
 
     issue = IssueService.get_issue(project_id=project.id, issue_number=issue_number)
     if not issue:
@@ -117,20 +131,22 @@ def update_issue(slug, issue_number):
     # milestone_id 的 allow_none 字段需保留显式 None（用于清空）。
     allow_none_fields = {"time_estimate", "assignee_id", "milestone_id"}
     update_data = {
-        k: v for k, v in data.items()
-        if v is not None or k in allow_none_fields
+        k: v for k, v in data.items() if v is not None or k in allow_none_fields
     }
     issue = IssueService.update_issue(issue, **update_data)
     return jsonify(issue=issue.to_dict()), 200
 
 
-@issues_bp.route("/projects/<slug>/issues/<int:issue_number>/time-entries", methods=["GET"])
+@issues_bp.route(
+    "/projects/<slug>/issues/<int:issue_number>/time-entries", methods=["GET"]
+)
 @jwt_required()
 def list_time_entries(slug, issue_number):
     """列出某 Issue 的耗时条目。需项目成员。"""
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
+    if err:
+        return err
 
     issue = IssueService.get_issue(project_id=project.id, issue_number=issue_number)
     if not issue:
@@ -147,13 +163,16 @@ def list_time_entries(slug, issue_number):
     ), 200
 
 
-@issues_bp.route("/projects/<slug>/issues/<int:issue_number>/time-entries", methods=["POST"])
+@issues_bp.route(
+    "/projects/<slug>/issues/<int:issue_number>/time-entries", methods=["POST"]
+)
 @jwt_required()
 def create_time_entry(slug, issue_number):
     """记录一段耗时。需项目成员。"""
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
+    if err:
+        return err
 
     issue = IssueService.get_issue(project_id=project.id, issue_number=issue_number)
     if not issue:
@@ -183,7 +202,8 @@ def delete_issue(slug, issue_number):
     """Delete an issue. Author or project admin/owner."""
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
+    if err:
+        return err
 
     issue = IssueService.get_issue(project_id=project.id, issue_number=issue_number)
     if not issue:

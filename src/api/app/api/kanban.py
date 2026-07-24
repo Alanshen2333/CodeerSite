@@ -1,7 +1,12 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_current_user
 from marshmallow import ValidationError
-from app.schemas.kanban import KanbanColumnCreateSchema, KanbanCardCreateSchema, KanbanCardMoveSchema, KanbanReorderSchema
+from app.schemas.kanban import (
+    KanbanColumnCreateSchema,
+    KanbanCardCreateSchema,
+    KanbanCardMoveSchema,
+    KanbanReorderSchema,
+)
 from app.services.kanban_service import KanbanService
 from app.services.project_service import ProjectService
 
@@ -26,13 +31,16 @@ def _check_member(project, user):
 @kanban_bp.route("/projects/<slug>/kanban/columns", methods=["GET"])
 def list_columns(slug):
     project, err = _get_project_or_404(slug)
-    if err: return err
+    if err:
+        return err
 
     columns = KanbanService.get_columns(project.id)
-    return jsonify(columns=[
-        {**c.to_dict(), "cards": [card.to_dict() for card in c.cards]}
-        for c in columns
-    ]), 200
+    return jsonify(
+        columns=[
+            {**c.to_dict(), "cards": [card.to_dict() for card in c.cards]}
+            for c in columns
+        ]
+    ), 200
 
 
 @kanban_bp.route("/projects/<slug>/kanban/columns", methods=["POST"])
@@ -40,8 +48,10 @@ def list_columns(slug):
 def create_column(slug):
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
-    if err2 := _check_member(project, user): return err2
+    if err:
+        return err
+    if err2 := _check_member(project, user):
+        return err2
 
     try:
         data = KanbanColumnCreateSchema().load(request.get_json())
@@ -57,8 +67,10 @@ def create_column(slug):
 def update_column(slug, column_id):
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
-    if err2 := _check_member(project, user): return err2
+    if err:
+        return err
+    if err2 := _check_member(project, user):
+        return err2
 
     col = KanbanService.get_column(column_id)
     if not col or col.project_id != project.id:
@@ -74,8 +86,10 @@ def update_column(slug, column_id):
 def delete_column(slug, column_id):
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
-    if err2 := _check_member(project, user): return err2
+    if err:
+        return err
+    if err2 := _check_member(project, user):
+        return err2
 
     col = KanbanService.get_column(column_id)
     if not col or col.project_id != project.id:
@@ -90,8 +104,10 @@ def delete_column(slug, column_id):
 def reorder_columns(slug):
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
-    if err2 := _check_member(project, user): return err2
+    if err:
+        return err
+    if err2 := _check_member(project, user):
+        return err2
 
     try:
         data = KanbanReorderSchema().load(request.get_json() or {})
@@ -111,8 +127,10 @@ def reorder_columns(slug):
 def create_card(slug, column_id):
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
-    if err2 := _check_member(project, user): return err2
+    if err:
+        return err
+    if err2 := _check_member(project, user):
+        return err2
 
     col = KanbanService.get_column(column_id)
     if not col or col.project_id != project.id:
@@ -132,8 +150,10 @@ def create_card(slug, column_id):
 def update_card(slug, card_id):
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
-    if err2 := _check_member(project, user): return err2
+    if err:
+        return err
+    if err2 := _check_member(project, user):
+        return err2
 
     card = KanbanService.get_card(card_id)
     if not card:
@@ -149,8 +169,10 @@ def update_card(slug, card_id):
 def delete_card(slug, card_id):
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
-    if err2 := _check_member(project, user): return err2
+    if err:
+        return err
+    if err2 := _check_member(project, user):
+        return err2
 
     card = KanbanService.get_card(card_id)
     if not card:
@@ -165,8 +187,10 @@ def delete_card(slug, card_id):
 def move_card(slug, card_id):
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
-    if err2 := _check_member(project, user): return err2
+    if err:
+        return err
+    if err2 := _check_member(project, user):
+        return err2
 
     card = KanbanService.get_card(card_id)
     if not card:

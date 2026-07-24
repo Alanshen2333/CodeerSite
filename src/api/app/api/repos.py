@@ -1,4 +1,5 @@
 """Repo blueprint: Project ↔ Gitea 仓库关联。"""
+
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_current_user
 from marshmallow import ValidationError
@@ -37,7 +38,9 @@ def _get_read_client(project, user):
         if client:
             return client
     if project.visibility == "public":
-        token = current_app.config.get("GITEA_PUBLIC_READONLY_TOKEN") or current_app.config.get("GITEA_ADMIN_TOKEN")
+        token = current_app.config.get(
+            "GITEA_PUBLIC_READONLY_TOKEN"
+        ) or current_app.config.get("GITEA_ADMIN_TOKEN")
         if token:
             return ReadOnlyGiteaClient(token)
     return None
@@ -67,7 +70,9 @@ def get_repo(slug):
         return jsonify(error="Forbidden", message="Private project."), 403
 
     if not project.gitea_full_name:
-        return jsonify(error="Not Found", message="Project has no associated repository."), 404
+        return jsonify(
+            error="Not Found", message="Project has no associated repository."
+        ), 404
 
     repo = GiteaClient.admin_get_repo(
         org=project.gitea_full_name.split("/")[0],
@@ -75,7 +80,10 @@ def get_repo(slug):
     )
     if repo is None:
         return (
-            jsonify(error="Service Unavailable", message="Gitea is unavailable or repository not found."),
+            jsonify(
+                error="Service Unavailable",
+                message="Gitea is unavailable or repository not found.",
+            ),
             503,
         )
 
@@ -110,13 +118,19 @@ def create_repo(slug):
 
     role = ProjectService.get_user_role(project.id, user.id)
     if role not in ("owner", "admin"):
-        return jsonify(error="Forbidden", message="Only project owner/admin can create repository."), 403
+        return jsonify(
+            error="Forbidden", message="Only project owner/admin can create repository."
+        ), 403
 
     if project.gitea_repo_id:
-        return jsonify(error="Conflict", message="Repository already exists for this project."), 409
+        return jsonify(
+            error="Conflict", message="Repository already exists for this project."
+        ), 409
 
     if not GiteaClient._is_available():
-        return jsonify(error="Service Unavailable", message="Gitea is not available."), 503
+        return jsonify(
+            error="Service Unavailable", message="Gitea is not available."
+        ), 503
 
     try:
         data = RepoCreateSchema().load(request.get_json() or {})
@@ -138,7 +152,9 @@ def create_repo(slug):
         private=private,
     )
     if repo is None:
-        return jsonify(error="Service Unavailable", message="Failed to create repository in Gitea."), 503
+        return jsonify(
+            error="Service Unavailable", message="Failed to create repository in Gitea."
+        ), 503
 
     project.gitea_repo_id = str(repo.get("id"))
     project.gitea_full_name = repo.get("full_name") or f"{org}/{repo_name}"
@@ -171,16 +187,22 @@ def delete_repo(slug):
 
     role = ProjectService.get_user_role(project.id, user.id)
     if role != "owner":
-        return jsonify(error="Forbidden", message="Only project owner can delete repository."), 403
+        return jsonify(
+            error="Forbidden", message="Only project owner can delete repository."
+        ), 403
 
     if not project.gitea_full_name:
-        return jsonify(error="Not Found", message="Project has no associated repository."), 404
+        return jsonify(
+            error="Not Found", message="Project has no associated repository."
+        ), 404
 
     org = project.gitea_full_name.split("/")[0]
     name = project.gitea_full_name.split("/")[-1]
     deleted = GiteaClient.admin_delete_repo(org, name)
     if not deleted and GiteaClient._is_available():
-        return jsonify(error="Service Unavailable", message="Failed to delete repository in Gitea."), 503
+        return jsonify(
+            error="Service Unavailable", message="Failed to delete repository in Gitea."
+        ), 503
 
     project.gitea_repo_id = None
     project.gitea_full_name = None
@@ -204,22 +226,30 @@ def list_branches(slug):
         return jsonify(error="Forbidden", message="Private project."), 403
 
     if not project.gitea_full_name:
-        return jsonify(error="Not Found", message="Project has no associated repository."), 404
+        return jsonify(
+            error="Not Found", message="Project has no associated repository."
+        ), 404
 
     client = _get_read_client(project, user)
     if client is None:
-        return jsonify(error="Service Unavailable", message="Gitea token not available."), 503
+        return jsonify(
+            error="Service Unavailable", message="Gitea token not available."
+        ), 503
 
     org, name = project.gitea_full_name.split("/")
     resp = client.get(f"/api/v1/repos/{org}/{name}/branches")
     if resp is None or resp.status_code != 200:
-        return jsonify(error="Service Unavailable", message="Failed to fetch branches."), 503
+        return jsonify(
+            error="Service Unavailable", message="Failed to fetch branches."
+        ), 503
 
     data = resp.json()
     branches = [
         {
             "name": b.get("name"),
-            "commit": b.get("commit", {}).get("id") if isinstance(b.get("commit"), dict) else None,
+            "commit": b.get("commit", {}).get("id")
+            if isinstance(b.get("commit"), dict)
+            else None,
         }
         for b in (data if isinstance(data, list) else [])
     ]
@@ -239,11 +269,15 @@ def get_tree(slug):
         return jsonify(error="Forbidden", message="Private project."), 403
 
     if not project.gitea_full_name:
-        return jsonify(error="Not Found", message="Project has no associated repository."), 404
+        return jsonify(
+            error="Not Found", message="Project has no associated repository."
+        ), 404
 
     client = _get_read_client(project, user)
     if client is None:
-        return jsonify(error="Service Unavailable", message="Gitea token not available."), 503
+        return jsonify(
+            error="Service Unavailable", message="Gitea token not available."
+        ), 503
 
     ref = request.args.get("ref") or _get_default_branch(project) or "main"
     path = request.args.get("path", "")
@@ -254,12 +288,16 @@ def get_tree(slug):
         params={"ref": ref},
     )
     if resp is None:
-        return jsonify(error="Service Unavailable", message="Failed to fetch tree."), 503
+        return jsonify(
+            error="Service Unavailable", message="Failed to fetch tree."
+        ), 503
 
     if resp.status_code == 404:
         return jsonify(error="Not Found", message="Path not found."), 404
     if resp.status_code != 200:
-        return jsonify(error="Service Unavailable", message="Failed to fetch tree."), 503
+        return jsonify(
+            error="Service Unavailable", message="Failed to fetch tree."
+        ), 503
 
     data = resp.json()
     items = data if isinstance(data, list) else [data]
@@ -292,11 +330,15 @@ def get_blob(slug):
         return jsonify(error="Forbidden", message="Private project."), 403
 
     if not project.gitea_full_name:
-        return jsonify(error="Not Found", message="Project has no associated repository."), 404
+        return jsonify(
+            error="Not Found", message="Project has no associated repository."
+        ), 404
 
     client = _get_read_client(project, user)
     if client is None:
-        return jsonify(error="Service Unavailable", message="Gitea token not available."), 503
+        return jsonify(
+            error="Service Unavailable", message="Gitea token not available."
+        ), 503
 
     ref = request.args.get("ref") or _get_default_branch(project) or "main"
     path = request.args.get("path", "")
@@ -309,12 +351,16 @@ def get_blob(slug):
         params={"ref": ref} if ref else None,
     )
     if resp is None:
-        return jsonify(error="Service Unavailable", message="Failed to fetch blob."), 503
+        return jsonify(
+            error="Service Unavailable", message="Failed to fetch blob."
+        ), 503
 
     if resp.status_code == 404:
         return jsonify(error="Not Found", message="File not found."), 404
     if resp.status_code != 200:
-        return jsonify(error="Service Unavailable", message="Failed to fetch blob."), 503
+        return jsonify(
+            error="Service Unavailable", message="Failed to fetch blob."
+        ), 503
 
     data = resp.json()
     # Gitea contents API 对文件返回 dict；内容可能是 base64 编码
@@ -358,11 +404,15 @@ def list_commits(slug):
         return jsonify(error="Forbidden", message="Private project."), 403
 
     if not project.gitea_full_name:
-        return jsonify(error="Not Found", message="Project has no associated repository."), 404
+        return jsonify(
+            error="Not Found", message="Project has no associated repository."
+        ), 404
 
     client = _get_read_client(project, user)
     if client is None:
-        return jsonify(error="Service Unavailable", message="Gitea token not available."), 503
+        return jsonify(
+            error="Service Unavailable", message="Gitea token not available."
+        ), 503
 
     ref = request.args.get("ref") or _get_default_branch(project) or "main"
     try:
@@ -377,14 +427,20 @@ def list_commits(slug):
         params={"sha": ref, "page": page, "limit": per_page},
     )
     if resp is None or resp.status_code != 200:
-        return jsonify(error="Service Unavailable", message="Failed to fetch commits."), 503
+        return jsonify(
+            error="Service Unavailable", message="Failed to fetch commits."
+        ), 503
 
     data = resp.json()
     commits = data if isinstance(data, list) else data.get("commits", [])
     results = []
     for c in commits:
         commit_data = c.get("commit", {}) if isinstance(c.get("commit"), dict) else {}
-        author = commit_data.get("author", {}) if isinstance(commit_data.get("author"), dict) else {}
+        author = (
+            commit_data.get("author", {})
+            if isinstance(commit_data.get("author"), dict)
+            else {}
+        )
         results.append(
             {
                 "sha": c.get("sha"),

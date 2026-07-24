@@ -5,9 +5,11 @@ from app.models.user import User
 from app.models.question import Question
 from app.models.answer import Answer
 from app.models.project import Project
-from app.models.badge import Badge, UserBadge
 from app.schemas.badge import (
-    BadgeCreateSchema, BadgeUpdateSchema, AwardSchema, RevokeSchema,
+    BadgeCreateSchema,
+    BadgeUpdateSchema,
+    AwardSchema,
+    RevokeSchema,
 )
 from app.services.badge_service import BadgeService
 from app.schemas.auth import AdminUserUpdateSchema
@@ -19,7 +21,10 @@ admin_bp = Blueprint("admin", __name__)
 def _require_admin():
     user = get_current_user()
     if user is None:
-        return None, (jsonify(error="Unauthorized", message="Authentication required."), 401)
+        return None, (
+            jsonify(error="Unauthorized", message="Authentication required."),
+            401,
+        )
     if user.role != "admin":
         return None, (jsonify(error="Forbidden", message="Admin access required."), 403)
     return user, None
@@ -226,7 +231,8 @@ def award_badge(badge_id):
 
     try:
         ub = BadgeService.award(
-            badge, data["user_id"],
+            badge,
+            data["user_id"],
             awarded_by=admin_user.id,
             reason=data.get("reason"),
         )

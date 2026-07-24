@@ -1,8 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_current_user
 from marshmallow import ValidationError
-from app.extensions import db
-from app.models.question import Question
 from app.schemas.question import QuestionCreateSchema, QuestionUpdateSchema
 from app.services.question_service import QuestionService
 
@@ -75,7 +73,9 @@ def update_question(question_id):
     if not question:
         return jsonify(error="Not Found", message="Question not found."), 404
     if question.author_id != user.id:
-        return jsonify(error="Forbidden", message="You can only edit your own questions."), 403
+        return jsonify(
+            error="Forbidden", message="You can only edit your own questions."
+        ), 403
 
     try:
         data = QuestionUpdateSchema().load(request.get_json() or {})
@@ -100,7 +100,9 @@ def delete_question(question_id):
     if not question:
         return jsonify(error="Not Found", message="Question not found."), 404
     if question.author_id != user.id and user.role not in ("moderator", "admin"):
-        return jsonify(error="Forbidden", message="You can only delete your own questions."), 403
+        return jsonify(
+            error="Forbidden", message="You can only delete your own questions."
+        ), 403
 
     QuestionService.delete_question(question)
     return jsonify(message="Question deleted."), 200
@@ -115,7 +117,9 @@ def close_question(question_id):
     if not question:
         return jsonify(error="Not Found", message="Question not found."), 404
     if question.author_id != user.id and user.role not in ("moderator", "admin"):
-        return jsonify(error="Forbidden", message="You cannot close this question."), 403
+        return jsonify(
+            error="Forbidden", message="You cannot close this question."
+        ), 403
 
     question = QuestionService.close_question(question)
     return jsonify(question=question.to_dict()), 200
@@ -130,7 +134,9 @@ def reopen_question(question_id):
     if not question:
         return jsonify(error="Not Found", message="Question not found."), 404
     if question.author_id != user.id and user.role not in ("moderator", "admin"):
-        return jsonify(error="Forbidden", message="You cannot reopen this question."), 403
+        return jsonify(
+            error="Forbidden", message="You cannot reopen this question."
+        ), 403
 
     question = QuestionService.reopen_question(question)
     return jsonify(question=question.to_dict()), 200

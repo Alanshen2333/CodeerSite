@@ -1,4 +1,5 @@
 """Gitea OAuth2 绑定/登录服务。"""
+
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 

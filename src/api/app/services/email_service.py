@@ -24,9 +24,7 @@ class EmailService:
         sender = current_app.config.get("MAIL_DEFAULT_SENDER", "noreply@codeer.site")
 
         if driver == "console":
-            current_app.logger.info(
-                "[EMAIL] to=%s subject=%s", to, subject
-            )
+            current_app.logger.info("[EMAIL] to=%s subject=%s", to, subject)
             return
 
         if driver == "smtp":

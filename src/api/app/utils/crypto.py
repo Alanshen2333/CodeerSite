@@ -1,4 +1,5 @@
 """Token 加密工具 —— 用于加密缓存的 Gitea personal access token。"""
+
 from flask import current_app
 from cryptography.fernet import Fernet, InvalidToken
 

@@ -33,7 +33,9 @@ class UserService:
         return {
             "question_count": Question.query.filter_by(author_id=user_id).count(),
             "answer_count": Answer.query.filter_by(author_id=user_id).count(),
-            "accepted_count": Answer.query.filter_by(author_id=user_id, is_accepted=True).count(),
+            "accepted_count": Answer.query.filter_by(
+                author_id=user_id, is_accepted=True
+            ).count(),
             "project_count": 0,  # Not yet implemented
         }
 

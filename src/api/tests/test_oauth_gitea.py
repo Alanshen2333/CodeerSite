@@ -1,4 +1,5 @@
 """Gitea OAuth 绑定/登录 + HTTP Git 凭据测试。"""
+
 from unittest.mock import MagicMock, patch
 
 from app.services.gitea_oauth_service import GiteaOAuthService
@@ -38,12 +39,16 @@ class TestOAuthCallback:
             return GiteaOAuthService._generate_state(intent, user_id)
 
     @patch("app.services.gitea_oauth_service.GiteaClient")
-    def test_callback_login_existing_bound_user(self, mock_client, client, app, auth_headers):
+    def test_callback_login_existing_bound_user(
+        self, mock_client, client, app, auth_headers
+    ):
         with app.app_context():
             from app.models.user import User
+
             user = User.query.filter_by(username="testuser").first()
             user.gitea_user_id = "123"
             from app.extensions import db
+
             db.session.commit()
 
         mock_client.exchange_oauth_code.return_value = {
@@ -75,6 +80,7 @@ class TestOAuthCallback:
     @patch("app.services.gitea_oauth_service.GiteaClient")
     def test_callback_bind(self, mock_client, client, app, auth_headers):
         from app.models.user import User
+
         with app.app_context():
             user = User.query.filter_by(username="testuser").first()
             user_id = user.id

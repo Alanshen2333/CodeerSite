@@ -8,7 +8,9 @@ from app.utils.crypto import encrypt_token
 
 class AuthService:
     @staticmethod
-    def register_user(username: str, email: str, password: str, display_name: str = None) -> User:
+    def register_user(
+        username: str, email: str, password: str, display_name: str = None
+    ) -> User:
         """Register a new user. Raises ValueError on duplicate.
 
         不再先查后插，直接依赖数据库唯一约束捕获 IntegrityError，消除并发注册竞态。
@@ -64,7 +66,9 @@ class AuthService:
     @staticmethod
     def change_password(user: User, verification_code: str, new_password: str) -> User:
         """校验邮箱验证码后修改密码。"""
-        if not EmailCodeService.verify_code(user.email, "change_password", verification_code):
+        if not EmailCodeService.verify_code(
+            user.email, "change_password", verification_code
+        ):
             raise ValueError("验证码无效或已过期。")
         user.set_password(new_password)
         db.session.commit()

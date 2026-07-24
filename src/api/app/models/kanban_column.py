@@ -7,7 +7,12 @@ class KanbanColumn(db.Model):
     __tablename__ = "kanban_columns"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id = db.Column(db.String(36), db.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    project_id = db.Column(
+        db.String(36),
+        db.ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     title = db.Column(db.String(100), nullable=False)
     position = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(
@@ -16,8 +21,13 @@ class KanbanColumn(db.Model):
         nullable=False,
     )
 
-    cards = db.relationship("KanbanCard", backref="column", lazy="dynamic",
-                            cascade="all, delete-orphan", order_by="KanbanCard.position")
+    cards = db.relationship(
+        "KanbanCard",
+        backref="column",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+        order_by="KanbanCard.position",
+    )
 
     def to_dict(self):
         return {

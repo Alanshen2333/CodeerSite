@@ -50,6 +50,7 @@ def register_blueprints(app):
 def register_error_handlers(app):
     """Register global error handlers."""
     from app.utils.errors import register_handlers
+
     register_handlers(app)
 
 
@@ -63,6 +64,7 @@ def create_app(config_name=None):
 
     # Initialize extensions
     from app.extensions import init_extensions
+
     init_extensions(app)
 
     # Register blueprints

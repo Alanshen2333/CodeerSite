@@ -5,24 +5,42 @@ from app.extensions import db
 # Many-to-many association table for question <-> tag
 question_tags = db.Table(
     "question_tags",
-    db.Column("question_id", db.String(36), db.ForeignKey("questions.id", ondelete="CASCADE"), primary_key=True),
-    db.Column("tag_id", db.String(36), db.ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+    db.Column(
+        "question_id",
+        db.String(36),
+        db.ForeignKey("questions.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    db.Column(
+        "tag_id",
+        db.String(36),
+        db.ForeignKey("tags.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
 
 
 class Question(db.Model):
     __tablename__ = "questions"
     __table_args__ = (
-        db.CheckConstraint("vote_count >= 0", name="ck_questions_vote_count_nonnegative"),
-        db.CheckConstraint("answer_count >= 0", name="ck_questions_answer_count_nonnegative"),
-        db.CheckConstraint("view_count >= 0", name="ck_questions_view_count_nonnegative"),
+        db.CheckConstraint(
+            "vote_count >= 0", name="ck_questions_vote_count_nonnegative"
+        ),
+        db.CheckConstraint(
+            "answer_count >= 0", name="ck_questions_answer_count_nonnegative"
+        ),
+        db.CheckConstraint(
+            "view_count >= 0", name="ck_questions_view_count_nonnegative"
+        ),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = db.Column(db.String(300), nullable=False)
     body = db.Column(db.Text, nullable=False)
     body_html = db.Column(db.Text, nullable=False)
-    author_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
+    author_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
     vote_count = db.Column(db.Integer, default=0, nullable=False)
     answer_count = db.Column(db.Integer, default=0, nullable=False)
     view_count = db.Column(db.Integer, default=0, nullable=False)
@@ -43,8 +61,12 @@ class Question(db.Model):
 
     # Relationships
     author = db.relationship("User", backref="questions")
-    tags = db.relationship("Tag", secondary=question_tags, backref="questions", lazy="joined")
-    answers = db.relationship("Answer", backref="question", lazy="dynamic", cascade="all, delete-orphan")
+    tags = db.relationship(
+        "Tag", secondary=question_tags, backref="questions", lazy="joined"
+    )
+    answers = db.relationship(
+        "Answer", backref="question", lazy="dynamic", cascade="all, delete-orphan"
+    )
 
     def to_dict(self, include_body_html=True):
         data = {

@@ -1,20 +1,30 @@
 """Test Issue 时间跟踪：预估工时设置、耗时条目记录与聚合、权限。"""
 
-import pytest
 
 
 def _login(client, username, email):
-    client.post("/api/auth/register", json={
-        "username": username, "email": email, "password": "password123",
-    })
-    resp = client.post("/api/auth/login", json={
-        "email": email, "password": "password123",
-    })
+    client.post(
+        "/api/auth/register",
+        json={
+            "username": username,
+            "email": email,
+            "password": "password123",
+        },
+    )
+    resp = client.post(
+        "/api/auth/login",
+        json={
+            "email": email,
+            "password": "password123",
+        },
+    )
     return {"Authorization": f"Bearer {resp.get_json()['access_token']}"}
 
 
 def _create_project(client, headers, name="Time Tracking Project"):
-    r = client.post("/api/projects", json={"name": name, "visibility": "public"}, headers=headers)
+    r = client.post(
+        "/api/projects", json={"name": name, "visibility": "public"}, headers=headers
+    )
     assert r.status_code == 201, r.get_json()
     return r.get_json()["project"]
 
@@ -41,7 +51,8 @@ class TestIssueTimeTracking:
 
         r = client.patch(
             f"/api/projects/{p['slug']}/issues/{issue['issue_number']}",
-            json={"time_estimate": 3600}, headers=auth_headers,
+            json={"time_estimate": 3600},
+            headers=auth_headers,
         )
         assert r.status_code == 200
         assert r.get_json()["issue"]["time_estimate"] == 3600
@@ -53,16 +64,22 @@ class TestIssueTimeTracking:
 
         r = client.patch(
             f"/api/projects/{p['slug']}/issues/{issue['issue_number']}",
-            json={"time_estimate": None}, headers=auth_headers,
+            json={"time_estimate": None},
+            headers=auth_headers,
         )
         assert r.status_code == 200
         assert r.get_json()["issue"]["time_estimate"] is None
 
     def test_negative_estimate_rejected(self, client, auth_headers):
         p = _create_project(client, auth_headers)
-        r = client.post(f"/api/projects/{p['slug']}/issues", json={
-            "title": "x", "time_estimate": -1,
-        }, headers=auth_headers)
+        r = client.post(
+            f"/api/projects/{p['slug']}/issues",
+            json={
+                "title": "x",
+                "time_estimate": -1,
+            },
+            headers=auth_headers,
+        )
         assert r.status_code == 422
 
     def test_create_time_entry_aggregates(self, client, auth_headers):
@@ -71,7 +88,8 @@ class TestIssueTimeTracking:
 
         r = client.post(
             f"/api/projects/{p['slug']}/issues/{issue['issue_number']}/time-entries",
-            json={"seconds": 1500, "note": "first"}, headers=auth_headers,
+            json={"seconds": 1500, "note": "first"},
+            headers=auth_headers,
         )
         assert r.status_code == 201, r.get_json()
         data = r.get_json()
@@ -86,11 +104,13 @@ class TestIssueTimeTracking:
 
         client.post(
             f"/api/projects/{p['slug']}/issues/{issue['issue_number']}/time-entries",
-            json={"seconds": 1500}, headers=auth_headers,
+            json={"seconds": 1500},
+            headers=auth_headers,
         )
         client.post(
             f"/api/projects/{p['slug']}/issues/{issue['issue_number']}/time-entries",
-            json={"seconds": 900}, headers=auth_headers,
+            json={"seconds": 900},
+            headers=auth_headers,
         )
         r = client.get(
             f"/api/projects/{p['slug']}/issues/{issue['issue_number']}",
@@ -104,11 +124,13 @@ class TestIssueTimeTracking:
 
         client.post(
             f"/api/projects/{p['slug']}/issues/{issue['issue_number']}/time-entries",
-            json={"seconds": 600, "note": "a"}, headers=auth_headers,
+            json={"seconds": 600, "note": "a"},
+            headers=auth_headers,
         )
         client.post(
             f"/api/projects/{p['slug']}/issues/{issue['issue_number']}/time-entries",
-            json={"seconds": 300, "note": "b"}, headers=auth_headers,
+            json={"seconds": 300, "note": "b"},
+            headers=auth_headers,
         )
         r = client.get(
             f"/api/projects/{p['slug']}/issues/{issue['issue_number']}/time-entries",
@@ -136,7 +158,8 @@ class TestIssueTimeTracking:
         h_other = _login(client, "outsider", "out@example.com")
         r = client.post(
             f"/api/projects/{p['slug']}/issues/{issue['issue_number']}/time-entries",
-            json={"seconds": 60}, headers=h_other,
+            json={"seconds": 60},
+            headers=h_other,
         )
         assert r.status_code == 403
 
@@ -156,7 +179,8 @@ class TestIssueTimeTracking:
         issue = _create_issue(client, auth_headers, p["slug"])
         r = client.post(
             f"/api/projects/{p['slug']}/issues/{issue['issue_number']}/time-entries",
-            json={"seconds": 0}, headers=auth_headers,
+            json={"seconds": 0},
+            headers=auth_headers,
         )
         assert r.status_code == 422
 
@@ -164,6 +188,7 @@ class TestIssueTimeTracking:
         p = _create_project(client, auth_headers)
         r = client.post(
             f"/api/projects/{p['slug']}/issues/9999/time-entries",
-            json={"seconds": 60}, headers=auth_headers,
+            json={"seconds": 60},
+            headers=auth_headers,
         )
         assert r.status_code == 404

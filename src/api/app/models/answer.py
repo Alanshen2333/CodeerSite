@@ -10,8 +10,15 @@ class Answer(db.Model):
     )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    question_id = db.Column(db.String(36), db.ForeignKey("questions.id", ondelete="CASCADE"), nullable=False, index=True)
-    author_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
+    question_id = db.Column(
+        db.String(36),
+        db.ForeignKey("questions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    author_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
     body = db.Column(db.Text, nullable=False)
     body_html = db.Column(db.Text, nullable=False)
     vote_count = db.Column(db.Integer, default=0, nullable=False)

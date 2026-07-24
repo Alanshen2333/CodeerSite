@@ -37,9 +37,16 @@ class NotificationService:
         return get_mongo_db()[cls.COLLECTION]
 
     @classmethod
-    def create(cls, recipient_id: str, type_: str, title: str,
-               body: str | None = None, link: str | None = None,
-               source_type: str | None = None, source_id: str | None = None) -> dict:
+    def create(
+        cls,
+        recipient_id: str,
+        type_: str,
+        title: str,
+        body: str | None = None,
+        link: str | None = None,
+        source_type: str | None = None,
+        source_id: str | None = None,
+    ) -> dict:
         try:
             col = cls._collection()
             if col is None:
@@ -64,8 +71,9 @@ class NotificationService:
             return {}
 
     @classmethod
-    def list_for_user(cls, user_id: str, unread_only: bool = False,
-                      page: int = 1, per_page: int = 20) -> dict:
+    def list_for_user(
+        cls, user_id: str, unread_only: bool = False, page: int = 1, per_page: int = 20
+    ) -> dict:
         empty = {"items": [], "total": 0, "page": page, "pages": 0}
         try:
             col = cls._collection()
@@ -76,9 +84,16 @@ class NotificationService:
                 query_filter["is_read"] = False
             total = col.count_documents(query_filter)
             skip = (page - 1) * per_page
-            docs = col.find(query_filter).sort("created_at", -1).skip(skip).limit(per_page)
+            docs = (
+                col.find(query_filter).sort("created_at", -1).skip(skip).limit(per_page)
+            )
             pages = (total + per_page - 1) // per_page
-            return {"items": [cls._format(d) for d in docs], "total": total, "page": page, "pages": pages}
+            return {
+                "items": [cls._format(d) for d in docs],
+                "total": total,
+                "page": page,
+                "pages": pages,
+            }
         except PyMongoError:
             return empty
 
@@ -132,5 +147,7 @@ class NotificationService:
             "source_type": doc.get("source_type"),
             "source_id": doc.get("source_id"),
             "is_read": doc.get("is_read", False),
-            "created_at": doc["created_at"].isoformat() if doc.get("created_at") else None,
+            "created_at": doc["created_at"].isoformat()
+            if doc.get("created_at")
+            else None,
         }

@@ -14,13 +14,17 @@ def list_comments():
     target_id = request.args.get("target_id")
 
     if not target_type or not target_id:
-        return jsonify(error="Bad Request", message="target_type and target_id are required."), 400
+        return jsonify(
+            error="Bad Request", message="target_type and target_id are required."
+        ), 400
 
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
     per_page = min(per_page, 50)
 
-    result = CommentService.get_comments(target_type, target_id, page=page, per_page=per_page)
+    result = CommentService.get_comments(
+        target_type, target_id, page=page, per_page=per_page
+    )
     return jsonify(
         comments=[c.to_dict() for c in result.items],
         total=result.total,
@@ -57,7 +61,9 @@ def update_comment(comment_id):
     if not comment:
         return jsonify(error="Not Found", message="Comment not found."), 404
     if comment.user_id != user.id:
-        return jsonify(error="Forbidden", message="You can only edit your own comments."), 403
+        return jsonify(
+            error="Forbidden", message="You can only edit your own comments."
+        ), 403
 
     try:
         data = CommentUpdateSchema().load(request.get_json())
@@ -77,7 +83,9 @@ def delete_comment(comment_id):
     if not comment:
         return jsonify(error="Not Found", message="Comment not found."), 404
     if comment.user_id != user.id and user.role not in ("moderator", "admin"):
-        return jsonify(error="Forbidden", message="You can only delete your own comments."), 403
+        return jsonify(
+            error="Forbidden", message="You can only delete your own comments."
+        ), 403
 
     CommentService.delete_comment(comment)
     return jsonify(message="Comment deleted."), 200

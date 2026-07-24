@@ -53,8 +53,12 @@ class UserBadge(db.Model):
     __tablename__ = "user_badges"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
-    badge_id = db.Column(db.String(36), db.ForeignKey("badges.id"), nullable=False, index=True)
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
+    badge_id = db.Column(
+        db.String(36), db.ForeignKey("badges.id"), nullable=False, index=True
+    )
     awarded_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
     reason = db.Column(db.Text, nullable=True)
     created_at = db.Column(
@@ -63,9 +67,7 @@ class UserBadge(db.Model):
         nullable=False,
     )
 
-    __table_args__ = (
-        db.UniqueConstraint("user_id", "badge_id", name="uq_user_badge"),
-    )
+    __table_args__ = (db.UniqueConstraint("user_id", "badge_id", name="uq_user_badge"),)
 
     badge = db.relationship("Badge", lazy="joined")
     user = db.relationship("User", foreign_keys=[user_id], backref="user_badges")

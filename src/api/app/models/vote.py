@@ -9,7 +9,9 @@ class Vote(db.Model):
     __tablename__ = "votes"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
     vote_type = db.Column(db.String(4), nullable=False)  # "up" or "down"
     target_type = db.Column(db.String(20), nullable=False)  # "question" or "answer"
     target_id = db.Column(db.String(36), nullable=False, index=True)
@@ -21,7 +23,9 @@ class Vote(db.Model):
 
     # Unique constraint: one vote per user per target
     __table_args__ = (
-        db.UniqueConstraint("user_id", "target_type", "target_id", name="uq_user_target_vote"),
+        db.UniqueConstraint(
+            "user_id", "target_type", "target_id", name="uq_user_target_vote"
+        ),
     )
 
     user = db.relationship("User", backref="votes")

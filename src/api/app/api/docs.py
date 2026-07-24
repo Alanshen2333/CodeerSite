@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, jsonify
 
 docs_bp = Blueprint("docs", __name__)
 
@@ -38,18 +38,24 @@ def api_docs():
             "/auth/login": {
                 "post": {"tags": ["Auth"], "summary": "登录", "security": []}
             },
-            "/auth/refresh": {
-                "post": {"tags": ["Auth"], "summary": "刷新 Token"}
-            },
+            "/auth/refresh": {"post": {"tags": ["Auth"], "summary": "刷新 Token"}},
             "/auth/me": {
                 "get": {"tags": ["Auth"], "summary": "获取当前用户"},
                 "patch": {"tags": ["Auth"], "summary": "更新个人资料"},
             },
             "/users": {
-                "get": {"tags": ["Users"], "summary": "用户列表（按声望排序）", "security": []}
+                "get": {
+                    "tags": ["Users"],
+                    "summary": "用户列表（按声望排序）",
+                    "security": [],
+                }
             },
             "/users/{username}": {
-                "get": {"tags": ["Users"], "summary": "用户详情 + 统计 + 成就", "security": []}
+                "get": {
+                    "tags": ["Users"],
+                    "summary": "用户详情 + 统计 + 成就",
+                    "security": [],
+                }
             },
             "/users/{username}/questions": {
                 "get": {"tags": ["Users"], "summary": "用户的问题列表", "security": []}
@@ -58,11 +64,19 @@ def api_docs():
                 "get": {"tags": ["Users"], "summary": "用户的回答列表", "security": []}
             },
             "/questions": {
-                "get": {"tags": ["Questions"], "summary": "问题列表（分页/排序/筛选）", "security": []},
+                "get": {
+                    "tags": ["Questions"],
+                    "summary": "问题列表（分页/排序/筛选）",
+                    "security": [],
+                },
                 "post": {"tags": ["Questions"], "summary": "创建问题"},
             },
             "/questions/{id}": {
-                "get": {"tags": ["Questions"], "summary": "问题详情（增加浏览数）", "security": []},
+                "get": {
+                    "tags": ["Questions"],
+                    "summary": "问题详情（增加浏览数）",
+                    "security": [],
+                },
                 "patch": {"tags": ["Questions"], "summary": "编辑问题"},
                 "delete": {"tags": ["Questions"], "summary": "删除问题"},
             },
@@ -143,7 +157,11 @@ def api_docs():
                 "delete": {"tags": ["Issues"], "summary": "删除 Issue"},
             },
             "/projects/{slug}/milestones": {
-                "get": {"tags": ["Milestones"], "summary": "里程碑列表", "security": []},
+                "get": {
+                    "tags": ["Milestones"],
+                    "summary": "里程碑列表",
+                    "security": [],
+                },
                 "post": {"tags": ["Milestones"], "summary": "创建里程碑"},
             },
             "/projects/{slug}/milestones/{id}": {
@@ -176,7 +194,10 @@ def api_docs():
             },
             "/notifications": {
                 "get": {"tags": ["Notifications"], "summary": "通知列表"},
-                "patch": {"tags": ["Notifications"], "summary": "全部已读（/read-all）"},
+                "patch": {
+                    "tags": ["Notifications"],
+                    "summary": "全部已读（/read-all）",
+                },
             },
             "/notifications/unread-count": {
                 "get": {"tags": ["Notifications"], "summary": "未读通知数"},

@@ -25,7 +25,8 @@ def _check_member(project, user):
 @milestones_bp.route("/projects/<slug>/milestones", methods=["GET"])
 def list_milestones(slug):
     project, err = _get_project_or_404(slug)
-    if err: return err
+    if err:
+        return err
     milestones = MilestoneService.get_milestones(project.id)
     return jsonify(milestones=[m.to_dict() for m in milestones]), 200
 
@@ -35,8 +36,10 @@ def list_milestones(slug):
 def create_milestone(slug):
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
-    if err2 := _check_member(project, user): return err2
+    if err:
+        return err
+    if err2 := _check_member(project, user):
+        return err2
 
     try:
         data = MilestoneCreateSchema().load(request.get_json())
@@ -57,8 +60,10 @@ def create_milestone(slug):
 def update_milestone(slug, milestone_id):
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
-    if err2 := _check_member(project, user): return err2
+    if err:
+        return err
+    if err2 := _check_member(project, user):
+        return err2
 
     milestone = MilestoneService.get_milestone(milestone_id)
     if not milestone or milestone.project_id != project.id:
@@ -79,10 +84,13 @@ def update_milestone(slug, milestone_id):
 def delete_milestone(slug, milestone_id):
     user = get_current_user()
     project, err = _get_project_or_404(slug)
-    if err: return err
+    if err:
+        return err
     role = ProjectService.get_user_role(project.id, user.id)
     if role not in ("owner", "admin"):
-        return jsonify(error="Forbidden", message="Only owner/admin can delete milestones."), 403
+        return jsonify(
+            error="Forbidden", message="Only owner/admin can delete milestones."
+        ), 403
 
     milestone = MilestoneService.get_milestone(milestone_id)
     if not milestone or milestone.project_id != project.id:

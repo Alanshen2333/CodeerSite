@@ -17,13 +17,23 @@ import pytest
 
 # ── 辅助函数 ──────────────────────────────────────────────
 
+
 def _login(client, username, email):
-    client.post("/api/auth/register", json={
-        "username": username, "email": email, "password": "password123",
-    })
-    resp = client.post("/api/auth/login", json={
-        "email": email, "password": "password123",
-    })
+    client.post(
+        "/api/auth/register",
+        json={
+            "username": username,
+            "email": email,
+            "password": "password123",
+        },
+    )
+    resp = client.post(
+        "/api/auth/login",
+        json={
+            "email": email,
+            "password": "password123",
+        },
+    )
     return {"Authorization": f"Bearer {resp.get_json()['access_token']}"}
 
 
@@ -50,7 +60,9 @@ def _create_issue(client, headers, slug, title, body=None):
     return resp.get_json()["issue"]
 
 
-def _create_question(client, headers, title, body="Default body text for search tests.", tag_ids=None):
+def _create_question(
+    client, headers, title, body="Default body text for search tests.", tag_ids=None
+):
     payload = {"title": title, "body": body}
     if tag_ids:
         payload["tag_ids"] = tag_ids
@@ -75,6 +87,7 @@ def _search(client, q="", source_type=None, page=1, per_page=20):
 
 # ── 测试类 ────────────────────────────────────────────────
 
+
 @pytest.mark.usefixtures("auth_headers")
 class TestSearch:
     """搜索基础功能测试。"""
@@ -82,7 +95,8 @@ class TestSearch:
     def test_english_keyword_search(self, client, auth_headers):
         """创建 question 后，英文关键词可搜到；断言 item 字段结构与值。"""
         q = _create_question(
-            client, auth_headers,
+            client,
+            auth_headers,
             title="How to deploy Flask on AWS?",
             body="I need help with Flask deployment.",
         )
@@ -109,7 +123,8 @@ class TestSearch:
     def test_chinese_substring_title(self, client, auth_headers):
         """中文子串命中：标题含中文的 question，搜其中连续子串能命中。"""
         _create_question(
-            client, auth_headers,
+            client,
+            auth_headers,
             title="如何部署 Flask 应用到生产环境",
             body="本文介绍部署步骤。详细说明如何配置。",
         )
@@ -121,7 +136,8 @@ class TestSearch:
     def test_chinese_substring_body(self, client, auth_headers):
         """正文里的中文子串也能命中。"""
         _create_question(
-            client, auth_headers,
+            client,
+            auth_headers,
             title="Some English Title",
             body="这里是一段中文正文，包含了关键词。",
         )
@@ -133,7 +149,8 @@ class TestSearch:
     def test_update_question_reindex(self, client, auth_headers):
         """更新 question 标题后：新词可搜到，旧标题的词搜不到（验证同事务更新）。"""
         q = _create_question(
-            client, auth_headers,
+            client,
+            auth_headers,
             title="Old Flask Title",
         )
         q_id = q["id"]
@@ -161,13 +178,16 @@ class TestSearch:
         # 旧标题的词应搜不到（或至少搜不到这个 question）
         resp = _search(client, q="Old Flask")
         assert resp.status_code == 200
-        old_items_after = [it for it in resp.get_json()["items"] if it["doc_id"] == q_id]
+        old_items_after = [
+            it for it in resp.get_json()["items"] if it["doc_id"] == q_id
+        ]
         assert len(old_items_after) == 0
 
     def test_delete_question_removes_from_search(self, client, auth_headers):
         """删除 question 后搜不到。"""
         q = _create_question(
-            client, auth_headers,
+            client,
+            auth_headers,
             title="Temporary Question",
             body="This will be deleted.",
         )
@@ -191,7 +211,8 @@ class TestSearch:
 
         # Question
         _create_question(
-            client, auth_headers,
+            client,
+            auth_headers,
             title=f"{shared_keyword} Question",
         )
         # Project
@@ -281,7 +302,9 @@ class TestSearch:
         """issue 删除后搜不到。"""
         p = _create_project(client, auth_headers, name="IssueDelProj")
         issue = _create_issue(
-            client, auth_headers, p["slug"],
+            client,
+            auth_headers,
+            p["slug"],
             title="IssueToDelete",
             body="This issue will be removed.",
         )
@@ -321,16 +344,21 @@ class TestSearch:
     def test_answer_searchable(self, client, auth_headers):
         """answer 创建后可通过其正文关键词搜到。"""
         q = _create_question(
-            client, auth_headers,
+            client,
+            auth_headers,
             title="Answer Search Test",
             body="Parent question body.",
         )
 
         # 创建 answer
-        resp = client.post("/api/answers", json={
-            "question_id": q["id"],
-            "body": "This is a unique answer body for search testing.",
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/answers",
+            json={
+                "question_id": q["id"],
+                "body": "This is a unique answer body for search testing.",
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 201
         answer = resp.get_json()["answer"]
 
@@ -345,14 +373,19 @@ class TestSearch:
     def test_answer_delete_removes_from_search(self, client, auth_headers):
         """answer 删除后搜不到。"""
         q = _create_question(
-            client, auth_headers,
+            client,
+            auth_headers,
             title="Answer Delete Test",
             body="Parent body.",
         )
-        resp = client.post("/api/answers", json={
-            "question_id": q["id"],
-            "body": "Answer to be deleted for search test.",
-        }, headers=auth_headers)
+        resp = client.post(
+            "/api/answers",
+            json={
+                "question_id": q["id"],
+                "body": "Answer to be deleted for search test.",
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 201
         answer = resp.get_json()["answer"]
 

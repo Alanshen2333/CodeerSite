@@ -130,9 +130,12 @@ class AnswerService:
     def get_answers(question_id: str, page: int = 1, per_page: int = 20):
         """Get paginated answers for a question, accepted first then by votes."""
         return (
-            Answer.query
-            .filter_by(question_id=question_id)
-            .order_by(Answer.is_accepted.desc(), Answer.vote_count.desc(), Answer.created_at.asc())
+            Answer.query.filter_by(question_id=question_id)
+            .order_by(
+                Answer.is_accepted.desc(),
+                Answer.vote_count.desc(),
+                Answer.created_at.asc(),
+            )
             .paginate(page=page, per_page=per_page, error_out=False)
         )
 
@@ -145,7 +148,10 @@ class AnswerService:
             title=f"Re: {q_title}" if q_title else answer.body[:80],
             body_text=answer.body[:1000],
             created_at=answer.created_at,
-            extra={"question_id": answer.question_id, "author_name": answer.author.display_name if answer.author else None},
+            extra={
+                "question_id": answer.question_id,
+                "author_name": answer.author.display_name if answer.author else None,
+            },
         )
 
     @staticmethod

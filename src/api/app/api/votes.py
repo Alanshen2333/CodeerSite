@@ -42,7 +42,9 @@ def remove_vote():
     target_id = request.args.get("target_id")
 
     if not target_type or not target_id:
-        return jsonify(error="Bad Request", message="target_type and target_id are required."), 400
+        return jsonify(
+            error="Bad Request", message="target_type and target_id are required."
+        ), 400
 
     try:
         VoteService.remove_vote(user.id, target_type, target_id)

@@ -16,7 +16,24 @@ from app.models.badge import Badge, UserBadge
 from app.models.user_ssh_key import UserSshKey
 from app.models.search_document import SearchDocument
 
-__all__ = ["User", "Tag", "Question", "Answer", "Vote", "Comment", "Bookmark",
-           "Project", "ProjectMember", "Star", "Issue", "TimeEntry",
-           "Milestone", "KanbanColumn", "KanbanCard", "Badge", "UserBadge",
-           "UserSshKey", "SearchDocument"]
+__all__ = [
+    "User",
+    "Tag",
+    "Question",
+    "Answer",
+    "Vote",
+    "Comment",
+    "Bookmark",
+    "Project",
+    "ProjectMember",
+    "Star",
+    "Issue",
+    "TimeEntry",
+    "Milestone",
+    "KanbanColumn",
+    "KanbanCard",
+    "Badge",
+    "UserBadge",
+    "UserSshKey",
+    "SearchDocument",
+]

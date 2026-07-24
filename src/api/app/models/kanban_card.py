@@ -7,8 +7,15 @@ class KanbanCard(db.Model):
     __tablename__ = "kanban_cards"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    column_id = db.Column(db.String(36), db.ForeignKey("kanban_columns.id", ondelete="CASCADE"), nullable=False, index=True)
-    issue_id = db.Column(db.String(36), db.ForeignKey("issues.id", ondelete="CASCADE"), nullable=True)
+    column_id = db.Column(
+        db.String(36),
+        db.ForeignKey("kanban_columns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    issue_id = db.Column(
+        db.String(36), db.ForeignKey("issues.id", ondelete="CASCADE"), nullable=True
+    )
     title = db.Column(db.String(200), nullable=False)
     position = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(

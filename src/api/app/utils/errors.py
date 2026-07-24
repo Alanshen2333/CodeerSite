@@ -29,7 +29,9 @@ def register_handlers(app):
 
     @app.errorhandler(500)
     def internal_error(e):
-        return jsonify(error="Internal Server Error", message="An unexpected error occurred."), 500
+        return jsonify(
+            error="Internal Server Error", message="An unexpected error occurred."
+        ), 500
 
     @app.errorhandler(HTTPException)
     def handle_http_exception(e):

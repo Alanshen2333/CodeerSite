@@ -108,4 +108,3 @@ class EmailCodeService:
             return False
         cls._mark_used(key)
         return True
-

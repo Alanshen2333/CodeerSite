@@ -14,12 +14,21 @@ def _create_project(client, headers, name="Starred Project"):
 
 
 def _login(client, username, email):
-    client.post("/api/auth/register", json={
-        "username": username, "email": email, "password": "password123",
-    })
-    resp = client.post("/api/auth/login", json={
-        "email": email, "password": "password123",
-    })
+    client.post(
+        "/api/auth/register",
+        json={
+            "username": username,
+            "email": email,
+            "password": "password123",
+        },
+    )
+    resp = client.post(
+        "/api/auth/login",
+        json={
+            "email": email,
+            "password": "password123",
+        },
+    )
     return {"Authorization": f"Bearer {resp.get_json()['access_token']}"}
 
 

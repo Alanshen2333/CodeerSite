@@ -7,9 +7,18 @@ class ProjectMember(db.Model):
     __tablename__ = "project_members"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id = db.Column(db.String(36), db.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
-    role = db.Column(db.String(20), default="member", nullable=False)  # owner/admin/member
+    project_id = db.Column(
+        db.String(36),
+        db.ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
+    role = db.Column(
+        db.String(20), default="member", nullable=False
+    )  # owner/admin/member
     joined_at = db.Column(
         db.DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

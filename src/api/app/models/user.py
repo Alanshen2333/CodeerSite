@@ -65,7 +65,9 @@ class User(db.Model):
         expires_at: datetime | None,
     ) -> None:
         self.gitea_token_encrypted = encrypt_token(access_token)
-        self.gitea_refresh_token_encrypted = encrypt_token(refresh_token) if refresh_token else None
+        self.gitea_refresh_token_encrypted = (
+            encrypt_token(refresh_token) if refresh_token else None
+        )
         self.gitea_token_expires_at = expires_at
 
     def get_avatar_url(self):
@@ -90,8 +92,12 @@ class User(db.Model):
             "reputation": self.reputation,
             "role": self.role,
             "is_active": self.is_active,
-            "email_verified_at": self.email_verified_at.isoformat() if self.email_verified_at else None,
-            "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
+            "email_verified_at": self.email_verified_at.isoformat()
+            if self.email_verified_at
+            else None,
+            "last_login_at": self.last_login_at.isoformat()
+            if self.last_login_at
+            else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "gitea_bound": self.is_gitea_bound(),
@@ -100,6 +106,7 @@ class User(db.Model):
     def to_public_dict(self):
         """Return public-safe user data (no email/password)."""
         from app.services.badge_service import BadgeService
+
         return {
             "id": self.id,
             "username": self.username,

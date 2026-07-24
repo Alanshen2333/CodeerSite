@@ -2,30 +2,39 @@
 
 import pytest
 
-from app.extensions import db
-from app.models.milestone import Milestone
-from app.models.issue import Issue
-from app.services.milestone_service import MilestoneService
 
 
 def _login(client, username, email):
-    client.post("/api/auth/register", json={
-        "username": username, "email": email, "password": "password123",
-    })
-    resp = client.post("/api/auth/login", json={
-        "email": email, "password": "password123",
-    })
+    client.post(
+        "/api/auth/register",
+        json={
+            "username": username,
+            "email": email,
+            "password": "password123",
+        },
+    )
+    resp = client.post(
+        "/api/auth/login",
+        json={
+            "email": email,
+            "password": "password123",
+        },
+    )
     return {"Authorization": f"Bearer {resp.get_json()['access_token']}"}
 
 
 def _create_project(client, headers, name="Test Project"):
-    resp = client.post("/api/projects", json={"name": name, "visibility": "public"}, headers=headers)
+    resp = client.post(
+        "/api/projects", json={"name": name, "visibility": "public"}, headers=headers
+    )
     assert resp.status_code == 201
     return resp.get_json()["project"]
 
 
 def _create_milestone(client, headers, slug, title="Sprint 1"):
-    resp = client.post(f"/api/projects/{slug}/milestones", json={"title": title}, headers=headers)
+    resp = client.post(
+        f"/api/projects/{slug}/milestones", json={"title": title}, headers=headers
+    )
     assert resp.status_code == 201
     return resp.get_json()["milestone"]
 
@@ -79,10 +88,16 @@ class TestMilestoneCounts:
         issue = _create_issue(client, auth_headers, p["slug"], "Task", m["id"])
 
         # Close then reopen
-        client.patch(f"/api/projects/{p['slug']}/issues/{issue['issue_number']}",
-                     json={"status": "closed"}, headers=auth_headers)
-        client.patch(f"/api/projects/{p['slug']}/issues/{issue['issue_number']}",
-                     json={"status": "open"}, headers=auth_headers)
+        client.patch(
+            f"/api/projects/{p['slug']}/issues/{issue['issue_number']}",
+            json={"status": "closed"},
+            headers=auth_headers,
+        )
+        client.patch(
+            f"/api/projects/{p['slug']}/issues/{issue['issue_number']}",
+            json={"status": "open"},
+            headers=auth_headers,
+        )
 
         resp = client.get(f"/api/projects/{p['slug']}/milestones")
         ms = resp.get_json()["milestones"][0]
@@ -97,8 +112,11 @@ class TestMilestoneCounts:
         issue = _create_issue(client, auth_headers, p["slug"], "Task", m1["id"])
 
         # Move to m2
-        client.patch(f"/api/projects/{p['slug']}/issues/{issue['issue_number']}",
-                     json={"milestone_id": m2["id"]}, headers=auth_headers)
+        client.patch(
+            f"/api/projects/{p['slug']}/issues/{issue['issue_number']}",
+            json={"milestone_id": m2["id"]},
+            headers=auth_headers,
+        )
 
         resp = client.get(f"/api/projects/{p['slug']}/milestones")
         milestones = {m["id"]: m for m in resp.get_json()["milestones"]}
@@ -111,7 +129,10 @@ class TestMilestoneCounts:
         m = _create_milestone(client, auth_headers, p["slug"])
         issue = _create_issue(client, auth_headers, p["slug"], "Task", m["id"])
 
-        client.delete(f"/api/projects/{p['slug']}/issues/{issue['issue_number']}", headers=auth_headers)
+        client.delete(
+            f"/api/projects/{p['slug']}/issues/{issue['issue_number']}",
+            headers=auth_headers,
+        )
 
         resp = client.get(f"/api/projects/{p['slug']}/milestones")
         ms = resp.get_json()["milestones"][0]

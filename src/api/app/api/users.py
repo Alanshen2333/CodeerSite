@@ -1,5 +1,4 @@
 from flask import Blueprint, jsonify, request, send_file, abort
-from flask_jwt_extended import jwt_required, get_current_user
 from io import BytesIO
 from app.extensions import db
 from app.models.user import User
@@ -60,8 +59,7 @@ def get_user_questions(username):
     per_page = min(per_page, 50)
 
     result = (
-        Question.query
-        .filter_by(author_id=user.id)
+        Question.query.filter_by(author_id=user.id)
         .order_by(Question.created_at.desc())
         .paginate(page=page, per_page=per_page, error_out=False)
     )
@@ -85,8 +83,7 @@ def get_user_answers(username):
     per_page = min(per_page, 50)
 
     result = (
-        Answer.query
-        .filter_by(author_id=user.id)
+        Answer.query.filter_by(author_id=user.id)
         .order_by(Answer.created_at.desc())
         .paginate(page=page, per_page=per_page, error_out=False)
     )

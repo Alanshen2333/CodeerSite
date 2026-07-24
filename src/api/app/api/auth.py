@@ -10,7 +10,6 @@ from flask_jwt_extended import (
 from marshmallow import ValidationError
 from sqlalchemy.exc import IntegrityError
 from app.extensions import db
-from app.models.user import User
 from app.schemas.auth import (
     RegisterSchema,
     LoginSchema,
@@ -56,7 +55,9 @@ def register():
         )
     except IntegrityError:
         db.session.rollback()
-        return jsonify(error="Conflict", message="Username or email already taken."), 409
+        return jsonify(
+            error="Conflict", message="Username or email already taken."
+        ), 409
     except ValueError as e:
         return jsonify(error="Conflict", message=str(e)), 409
 
@@ -288,6 +289,7 @@ def retry_ssh_key_sync(key_id: str):
 
     try:
         from app.models.user_ssh_key import UserSshKey
+
         key = UserSshKey.query.filter_by(id=key_id, user_id=user.id).first()
         if key is None:
             return jsonify(error="Not Found", message="公钥不存在。"), 404
@@ -316,7 +318,9 @@ def oauth_authorize():
         try:
             verify_jwt_in_request()
         except Exception:
-            return jsonify(error="Unauthorized", message="Bind requires authentication."), 401
+            return jsonify(
+                error="Unauthorized", message="Bind requires authentication."
+            ), 401
         user, error = _get_user_or_401()
         if error:
             return error
@@ -398,7 +402,9 @@ def oauth_callback():
     try:
         verify_jwt_in_request()
     except Exception:
-        return jsonify(error="Unauthorized", message="Bind requires authentication."), 401
+        return jsonify(
+            error="Unauthorized", message="Bind requires authentication."
+        ), 401
 
     user, error = _get_user_or_401()
     if error:

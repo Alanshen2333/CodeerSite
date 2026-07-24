@@ -58,7 +58,9 @@ def update_answer(answer_id):
     if not answer:
         return jsonify(error="Not Found", message="Answer not found."), 404
     if answer.author_id != user.id:
-        return jsonify(error="Forbidden", message="You can only edit your own answers."), 403
+        return jsonify(
+            error="Forbidden", message="You can only edit your own answers."
+        ), 403
 
     try:
         data = AnswerUpdateSchema().load(request.get_json())
@@ -78,7 +80,9 @@ def delete_answer(answer_id):
     if not answer:
         return jsonify(error="Not Found", message="Answer not found."), 404
     if answer.author_id != user.id and user.role not in ("moderator", "admin"):
-        return jsonify(error="Forbidden", message="You can only delete your own answers."), 403
+        return jsonify(
+            error="Forbidden", message="You can only delete your own answers."
+        ), 403
 
     AnswerService.delete_answer(answer)
     return jsonify(message="Answer deleted."), 200

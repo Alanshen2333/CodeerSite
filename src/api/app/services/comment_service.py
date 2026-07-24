@@ -9,7 +9,9 @@ from app.services.notification_service import NotificationService
 
 class CommentService:
     @staticmethod
-    def create_comment(user_id: str, body: str, target_type: str, target_id: str) -> Comment:
+    def create_comment(
+        user_id: str, body: str, target_type: str, target_id: str
+    ) -> Comment:
         model_map = {"question": Question, "answer": Answer, "issue": Issue}
         if target_type not in model_map:
             raise ValueError(f"Invalid target_type: {target_type}")
@@ -29,7 +31,9 @@ class CommentService:
         # Notify the target owner
         target_author_id = CommentService._get_target_author_id(target_type, target_id)
         if target_author_id and target_author_id != user_id:
-            target_label = {"question": "问题", "answer": "回答", "issue": "Issue"}.get(target_type, "内容")
+            target_label = {"question": "问题", "answer": "回答", "issue": "Issue"}.get(
+                target_type, "内容"
+            )
             NotificationService.create(
                 recipient_id=target_author_id,
                 type_="new_comment",
@@ -79,11 +83,12 @@ class CommentService:
         return db.session.get(Comment, comment_id)
 
     @staticmethod
-    def get_comments(target_type: str, target_id: str, page: int = 1, per_page: int = 20):
+    def get_comments(
+        target_type: str, target_id: str, page: int = 1, per_page: int = 20
+    ):
         """Get paginated comments for a target."""
         return (
-            Comment.query
-            .filter_by(target_type=target_type, target_id=target_id)
+            Comment.query.filter_by(target_type=target_type, target_id=target_id)
             .order_by(Comment.created_at.asc())
             .paginate(page=page, per_page=per_page, error_out=False)
         )

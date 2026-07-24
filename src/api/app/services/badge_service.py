@@ -19,16 +19,61 @@ BADGE_TIERS = [
 ]
 
 ACHIEVEMENTS = [
-    {"key": "first_question", "name": "初次提问", "icon": "❓", "condition": "questions >= 1"},
-    {"key": "first_answer", "name": "初次回答", "icon": "💬", "condition": "answers >= 1"},
+    {
+        "key": "first_question",
+        "name": "初次提问",
+        "icon": "❓",
+        "condition": "questions >= 1",
+    },
+    {
+        "key": "first_answer",
+        "name": "初次回答",
+        "icon": "💬",
+        "condition": "answers >= 1",
+    },
     {"key": "accepted_1", "name": "被采纳", "icon": "✅", "condition": "accepted >= 1"},
-    {"key": "accepted_10", "name": "优质贡献者", "icon": "🌟", "condition": "accepted >= 10"},
-    {"key": "accepted_50", "name": "社区专家", "icon": "🏆", "condition": "accepted >= 50"},
-    {"key": "questions_10", "name": "勤学好问", "icon": "📚", "condition": "questions >= 10"},
-    {"key": "questions_50", "name": "问题达人", "icon": "🎯", "condition": "questions >= 50"},
-    {"key": "answers_10", "name": "乐于助人", "icon": "🤝", "condition": "answers >= 10"},
-    {"key": "answers_50", "name": "社区导师", "icon": "👨‍🏫", "condition": "answers >= 50"},
-    {"key": "reputation_1000", "name": "声望过千", "icon": "💎", "condition": "reputation >= 1000"},
+    {
+        "key": "accepted_10",
+        "name": "优质贡献者",
+        "icon": "🌟",
+        "condition": "accepted >= 10",
+    },
+    {
+        "key": "accepted_50",
+        "name": "社区专家",
+        "icon": "🏆",
+        "condition": "accepted >= 50",
+    },
+    {
+        "key": "questions_10",
+        "name": "勤学好问",
+        "icon": "📚",
+        "condition": "questions >= 10",
+    },
+    {
+        "key": "questions_50",
+        "name": "问题达人",
+        "icon": "🎯",
+        "condition": "questions >= 50",
+    },
+    {
+        "key": "answers_10",
+        "name": "乐于助人",
+        "icon": "🤝",
+        "condition": "answers >= 10",
+    },
+    {
+        "key": "answers_50",
+        "name": "社区导师",
+        "icon": "👨‍🏫",
+        "condition": "answers >= 50",
+    },
+    {
+        "key": "reputation_1000",
+        "name": "声望过千",
+        "icon": "💎",
+        "condition": "reputation >= 1000",
+    },
 ]
 
 
@@ -47,13 +92,16 @@ class BadgeService:
         """Get unlocked achievements for a user based on their stats."""
         question_count = Question.query.filter_by(author_id=user.id).count()
         answer_count = Answer.query.filter_by(author_id=user.id).count()
-        accepted_count = Answer.query.filter_by(author_id=user.id, is_accepted=True).count()
+        accepted_count = Answer.query.filter_by(
+            author_id=user.id, is_accepted=True
+        ).count()
 
         unlocked = []
         for ach in ACHIEVEMENTS:
             cond = ach["condition"]
-            if BadgeService._check_condition(cond, question_count, answer_count,
-                                              accepted_count, user.reputation):
+            if BadgeService._check_condition(
+                cond, question_count, answer_count, accepted_count, user.reputation
+            ):
                 unlocked.append(ach)
         return unlocked
 
@@ -76,8 +124,9 @@ class BadgeService:
     )
 
     @staticmethod
-    def _check_condition(condition: str, questions: int, answers: int,
-                          accepted: int, reputation: int) -> bool:
+    def _check_condition(
+        condition: str, questions: int, answers: int, accepted: int, reputation: int
+    ) -> bool:
         if not isinstance(condition, str):
             return False
 
@@ -131,8 +180,12 @@ class BadgeService:
         return Badge.query.filter_by(slug=slug).first()
 
     @staticmethod
-    def create_badge(name: str, description: str | None = None,
-                     icon: str | None = None, color: str = "#5e6ad2") -> Badge:
+    def create_badge(
+        name: str,
+        description: str | None = None,
+        icon: str | None = None,
+        color: str = "#5e6ad2",
+    ) -> Badge:
         """创建自定义徽章。name 唯一，自动生成 slug。"""
         name = name.strip()
         if Badge.query.filter_by(name=name).first():
@@ -171,8 +224,10 @@ class BadgeService:
             if new_slug != badge.slug:
                 base = new_slug
                 i = 1
-                while Badge.query.filter_by(slug=new_slug).first() is not None and \
-                        Badge.query.filter_by(slug=new_slug).first().id != badge.id:
+                while (
+                    Badge.query.filter_by(slug=new_slug).first() is not None
+                    and Badge.query.filter_by(slug=new_slug).first().id != badge.id
+                ):
                     new_slug = f"{base}-{i}"
                     i += 1
                 badge.slug = new_slug
@@ -194,8 +249,9 @@ class BadgeService:
     # ── 发放 / 撤销 ─────────────────────────────────────
 
     @staticmethod
-    def award(badge: Badge, user_id: str, awarded_by: str | None,
-              reason: str | None = None) -> UserBadge:
+    def award(
+        badge: Badge, user_id: str, awarded_by: str | None, reason: str | None = None
+    ) -> UserBadge:
         """向用户发放徽章；已发放则抛 ValueError。"""
         if not db.session.get(User, user_id):
             raise LookupError("User not found.")
@@ -224,8 +280,7 @@ class BadgeService:
     @staticmethod
     def get_recipients(badge: Badge) -> list[UserBadge]:
         return (
-            UserBadge.query
-            .filter_by(badge_id=badge.id)
+            UserBadge.query.filter_by(badge_id=badge.id)
             .order_by(UserBadge.created_at.desc())
             .all()
         )
@@ -234,8 +289,7 @@ class BadgeService:
     def get_user_awarded_badges(user_id: str) -> list[UserBadge]:
         """用户已获的自定义徽章列表。"""
         return (
-            UserBadge.query
-            .filter_by(user_id=user_id)
+            UserBadge.query.filter_by(user_id=user_id)
             .order_by(UserBadge.created_at.desc())
             .all()
         )
@@ -260,8 +314,7 @@ class BadgeService:
             existing_keys = {
                 ub.badge.slug
                 for ub in (
-                    UserBadge.query
-                    .join(Badge)
+                    UserBadge.query.join(Badge)
                     .filter(UserBadge.user_id == user_id, Badge.kind == "achievement")
                     .all()
                 )
@@ -309,7 +362,9 @@ class BadgeService:
             return newly_awarded
         except Exception:
             db.session.rollback()
-            logger.warning("auto_award_achievements failed for user %s", user_id, exc_info=True)
+            logger.warning(
+                "auto_award_achievements failed for user %s", user_id, exc_info=True
+            )
             return []
 
     @staticmethod

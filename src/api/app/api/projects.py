@@ -17,11 +17,14 @@ def list_projects():
     sort = request.args.get("sort", "newest")
     visibility = request.args.get("visibility")
 
-    result = ProjectService.get_projects(page=page, per_page=per_page, sort=sort, visibility=visibility)
+    result = ProjectService.get_projects(
+        page=page, per_page=per_page, sort=sort, visibility=visibility
+    )
     user = get_current_user()  # optional=True：未登录为 None
     starred_ids = (
         ProjectService.get_starred_project_ids(user.id, [p.id for p in result.items])
-        if user else set()
+        if user
+        else set()
     )
     projects = []
     for p in result.items:
@@ -79,7 +82,9 @@ def update_project(slug):
 
     role = ProjectService.get_user_role(project.id, user.id)
     if role not in ("owner", "admin"):
-        return jsonify(error="Forbidden", message="Only project owner/admin can update."), 403
+        return jsonify(
+            error="Forbidden", message="Only project owner/admin can update."
+        ), 403
 
     try:
         data = ProjectUpdateSchema().load(request.get_json() or {})
@@ -87,7 +92,9 @@ def update_project(slug):
         return jsonify(error="Validation Error", messages=e.messages), 422
 
     project = ProjectService.update_project(
-        project, name=data.get("name"), description=data.get("description"),
+        project,
+        name=data.get("name"),
+        description=data.get("description"),
         visibility=data.get("visibility"),
     )
     return jsonify(project=project.to_dict()), 200
@@ -104,7 +111,9 @@ def delete_project(slug):
 
     role = ProjectService.get_user_role(project.id, user.id)
     if role != "owner":
-        return jsonify(error="Forbidden", message="Only the project owner can delete."), 403
+        return jsonify(
+            error="Forbidden", message="Only the project owner can delete."
+        ), 403
 
     ProjectService.delete_project(project)
     return jsonify(message="Project deleted."), 200
@@ -132,7 +141,9 @@ def add_member(slug):
 
     role = ProjectService.get_user_role(project.id, user.id)
     if role not in ("owner", "admin"):
-        return jsonify(error="Forbidden", message="Only owner/admin can add members."), 403
+        return jsonify(
+            error="Forbidden", message="Only owner/admin can add members."
+        ), 403
 
     try:
         data = AddMemberSchema().load(request.get_json())
@@ -140,7 +151,9 @@ def add_member(slug):
         return jsonify(error="Validation Error", messages=e.messages), 422
 
     try:
-        member = ProjectService.add_member(project.id, data["user_id"], data.get("role", "member"))
+        member = ProjectService.add_member(
+            project.id, data["user_id"], data.get("role", "member")
+        )
     except ValueError as e:
         return jsonify(error="Conflict", message=str(e)), 409
 
@@ -158,7 +171,9 @@ def remove_member(slug, user_id):
 
     role = ProjectService.get_user_role(project.id, user.id)
     if role not in ("owner", "admin"):
-        return jsonify(error="Forbidden", message="Only owner/admin can remove members."), 403
+        return jsonify(
+            error="Forbidden", message="Only owner/admin can remove members."
+        ), 403
 
     try:
         ProjectService.remove_member(project.id, user_id)

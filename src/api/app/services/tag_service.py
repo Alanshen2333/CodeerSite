@@ -45,7 +45,12 @@ class TagService:
     @staticmethod
     def search_tags(q: str, limit: int = 10) -> List[Tag]:
         """Search tags by name prefix."""
-        return Tag.query.filter(Tag.name.ilike(f"{q}%")).order_by(Tag.usage_count.desc()).limit(limit).all()
+        return (
+            Tag.query.filter(Tag.name.ilike(f"{q}%"))
+            .order_by(Tag.usage_count.desc())
+            .limit(limit)
+            .all()
+        )
 
     @staticmethod
     def get_tag_by_slug(slug: str) -> Optional[Tag]:
@@ -63,7 +68,9 @@ class TagService:
                 tag.usage_count = count
 
     @classmethod
-    def create_tag(cls, name: str, description: str = None, color: str = "#1677ff") -> Tag:
+    def create_tag(
+        cls, name: str, description: str = None, color: str = "#1677ff"
+    ) -> Tag:
         """创建新标签。名称查重，自动生成 slug。"""
         name = name.strip().lower()
         existing = Tag.query.filter_by(name=name).first()

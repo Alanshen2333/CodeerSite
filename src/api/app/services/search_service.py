@@ -30,10 +30,15 @@ class SearchService:
         return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
     @staticmethod
-    def index_document(doc_id: str, source_type: str, title: str,
-                       body_text: str, tags: list[str] | None = None,
-                       created_at: datetime | None = None,
-                       extra: dict | None = None):
+    def index_document(
+        doc_id: str,
+        source_type: str,
+        title: str,
+        body_text: str,
+        tags: list[str] | None = None,
+        created_at: datetime | None = None,
+        extra: dict | None = None,
+    ):
         """索引/更新文档。只 flush 不 commit，由调用方事务统一提交。"""
         # 查找已有记录
         doc = SearchDocument.query.filter_by(
@@ -96,8 +101,9 @@ class SearchService:
             db.session.flush()
 
     @staticmethod
-    def search(q: str, source_type: str | None = None,
-               page: int = 1, per_page: int = 20) -> dict:
+    def search(
+        q: str, source_type: str | None = None, page: int = 1, per_page: int = 20
+    ) -> dict:
         """全文搜索，返回结构与旧版 MongoDB 实现一致。"""
         empty = {"items": [], "total": 0, "page": page, "pages": 0}
 
@@ -114,7 +120,9 @@ class SearchService:
 
                 # 匹配条件：tsvector 全文搜索 OR ILIKE 中文子串兜底
                 condition = or_(
-                    SearchDocument.search_vector.op("@@")(func.plainto_tsquery(_SIMPLE_CFG, q_clean)),
+                    SearchDocument.search_vector.op("@@")(
+                        func.plainto_tsquery(_SIMPLE_CFG, q_clean)
+                    ),
                     SearchDocument.title.ilike(f"%{escaped}%", escape="\\"),
                     SearchDocument.body_text.ilike(f"%{escaped}%", escape="\\"),
                 )

@@ -14,7 +14,11 @@ class KanbanService:
             .filter_by(project_id=project_id)
             .scalar()
         )
-        col = KanbanColumn(project_id=project_id, title=title, position=(max_pos + 1) if max_pos is not None else 0)
+        col = KanbanColumn(
+            project_id=project_id,
+            title=title,
+            position=(max_pos + 1) if max_pos is not None else 0,
+        )
         db.session.add(col)
         db.session.commit()
         return col
@@ -38,8 +42,7 @@ class KanbanService:
     @staticmethod
     def get_columns(project_id: str) -> List[KanbanColumn]:
         return (
-            KanbanColumn.query
-            .filter_by(project_id=project_id)
+            KanbanColumn.query.filter_by(project_id=project_id)
             .order_by(KanbanColumn.position.asc())
             .all()
         )
@@ -76,7 +79,12 @@ class KanbanService:
             .filter_by(column_id=column_id)
             .scalar()
         )
-        card = KanbanCard(column_id=column_id, title=title, issue_id=issue_id, position=(max_pos + 1) if max_pos is not None else 0)
+        card = KanbanCard(
+            column_id=column_id,
+            title=title,
+            issue_id=issue_id,
+            position=(max_pos + 1) if max_pos is not None else 0,
+        )
         db.session.add(card)
         db.session.commit()
         return card
@@ -153,8 +161,7 @@ class KanbanService:
     def _normalize_positions(column_id: str):
         """Renumber all cards in a column to be contiguous 0, 1, 2, ..."""
         cards = (
-            KanbanCard.query
-            .filter_by(column_id=column_id)
+            KanbanCard.query.filter_by(column_id=column_id)
             .order_by(KanbanCard.position.asc())
             .all()
         )
@@ -168,8 +175,7 @@ class KanbanService:
     @staticmethod
     def get_cards(column_id: str) -> List[KanbanCard]:
         return (
-            KanbanCard.query
-            .filter_by(column_id=column_id)
+            KanbanCard.query.filter_by(column_id=column_id)
             .order_by(KanbanCard.position.asc())
             .all()
         )

@@ -15,10 +15,15 @@ _md_renderer = mistune.create_markdown(escape=True, hard_wrap=True)
 class IssueService:
     @staticmethod
     def create_issue(
-        project_id: str, author_id: str, title: str,
-        body: str = None, assignee_id: str = None,
-        priority: str = "medium", milestone_id: str = None,
-        tag_ids: list = None, time_estimate: int = None,
+        project_id: str,
+        author_id: str,
+        title: str,
+        body: str = None,
+        assignee_id: str = None,
+        priority: str = "medium",
+        milestone_id: str = None,
+        tag_ids: list = None,
+        time_estimate: int = None,
     ) -> Issue:
         # 使用 SELECT ... FOR UPDATE 锁定项目行，原子生成 issue_number
         project = db.session.execute(
@@ -59,6 +64,7 @@ class IssueService:
         # Notify assignee if one was set
         if assignee_id and assignee_id != author_id:
             from app.models.user import User
+
             project = db.session.get(Project, project_id)
             project_slug = project.slug if project else ""
             assignee = db.session.get(User, assignee_id)
@@ -79,8 +85,15 @@ class IssueService:
         old_assignee_id = issue.assignee_id
         old_milestone_id = issue.milestone_id
         old_status = issue.status
-        for field in ("title", "body", "assignee_id", "status", "priority",
-                      "milestone_id", "time_estimate"):
+        for field in (
+            "title",
+            "body",
+            "assignee_id",
+            "status",
+            "priority",
+            "milestone_id",
+            "time_estimate",
+        ):
             if field in kwargs and kwargs[field] is not None or field in kwargs:
                 setattr(issue, field, kwargs[field])
 
@@ -134,20 +147,28 @@ class IssueService:
             MilestoneService.recompute_counts(milestone_id)
 
     @staticmethod
-    def get_issue(issue_id: str = None, project_id: str = None, issue_number: int = None) -> Optional[Issue]:
+    def get_issue(
+        issue_id: str = None, project_id: str = None, issue_number: int = None
+    ) -> Optional[Issue]:
         if issue_id:
             return db.session.get(Issue, issue_id)
         if project_id and issue_number:
-            return Issue.query.filter_by(project_id=project_id, issue_number=issue_number).first()
+            return Issue.query.filter_by(
+                project_id=project_id, issue_number=issue_number
+            ).first()
         return None
 
     @staticmethod
     def get_issues(
         project_id: str,
-        page: int = 1, per_page: int = 20,
-        status: str = None, priority: str = None,
-        assignee_id: str = None, milestone_id: str = None,
-        tag_id: str = None, sort: str = "newest",
+        page: int = 1,
+        per_page: int = 20,
+        status: str = None,
+        priority: str = None,
+        assignee_id: str = None,
+        milestone_id: str = None,
+        tag_id: str = None,
+        sort: str = "newest",
     ):
         query = Issue.query.filter_by(project_id=project_id)
 
@@ -181,9 +202,16 @@ class IssueService:
     def get_issue_stats(project_id: str) -> dict:
         """Get issue counts by status."""
         open_count = Issue.query.filter_by(project_id=project_id, status="open").count()
-        in_progress = Issue.query.filter_by(project_id=project_id, status="in_progress").count()
+        in_progress = Issue.query.filter_by(
+            project_id=project_id, status="in_progress"
+        ).count()
         closed = Issue.query.filter_by(project_id=project_id, status="closed").count()
-        return {"open": open_count, "in_progress": in_progress, "closed": closed, "total": open_count + in_progress + closed}
+        return {
+            "open": open_count,
+            "in_progress": in_progress,
+            "closed": closed,
+            "total": open_count + in_progress + closed,
+        }
 
     @staticmethod
     def _index_to_search(issue: Issue):
@@ -193,8 +221,12 @@ class IssueService:
             title=issue.title,
             body_text=(issue.body or "")[:1000],
             created_at=issue.created_at,
-            extra={"issue_number": issue.issue_number, "project_id": issue.project_id,
-                   "status": issue.status, "author_name": issue.author.display_name if issue.author else None},
+            extra={
+                "issue_number": issue.issue_number,
+                "project_id": issue.project_id,
+                "status": issue.status,
+                "author_name": issue.author.display_name if issue.author else None,
+            },
         )
 
     @staticmethod
@@ -204,8 +236,9 @@ class IssueService:
     # ── 时间跟踪 ──────────────────────────────────────────
 
     @staticmethod
-    def add_time_entry(issue: Issue, user_id: str, seconds: int,
-                       note: str = None) -> TimeEntry:
+    def add_time_entry(
+        issue: Issue, user_id: str, seconds: int, note: str = None
+    ) -> TimeEntry:
         """记录一段耗时：创建 TimeEntry 并同步累加 Issue.time_spent 反范式缓存。"""
         entry = TimeEntry(
             issue_id=issue.id,
@@ -222,8 +255,7 @@ class IssueService:
     def get_time_entries(issue: Issue) -> list[TimeEntry]:
         """返回某 Issue 的全部耗时条目（按时间倒序）。"""
         return (
-            TimeEntry.query
-            .filter_by(issue_id=issue.id)
+            TimeEntry.query.filter_by(issue_id=issue.id)
             .order_by(TimeEntry.created_at.desc())
             .all()
         )

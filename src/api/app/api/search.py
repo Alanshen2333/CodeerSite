@@ -9,12 +9,16 @@ def search():
     """Global full-text search across questions, answers, issues, and projects."""
     q = request.args.get("q", "").strip()
     if q and (len(q) < 2 or len(q) > 100):
-        return jsonify(error="Validation Error", message="Query must be 2-100 characters."), 400
+        return jsonify(
+            error="Validation Error", message="Query must be 2-100 characters."
+        ), 400
 
     source_type = request.args.get("type")
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
     per_page = min(per_page, 50)
 
-    result = SearchService.search(q=q, source_type=source_type, page=page, per_page=per_page)
+    result = SearchService.search(
+        q=q, source_type=source_type, page=page, per_page=per_page
+    )
     return jsonify(**result), 200

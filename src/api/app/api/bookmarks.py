@@ -60,7 +60,9 @@ def check_bookmark():
     target_id = request.args.get("target_id")
 
     if not target_type or not target_id:
-        return jsonify(error="Bad Request", message="target_type and target_id are required."), 400
+        return jsonify(
+            error="Bad Request", message="target_type and target_id are required."
+        ), 400
 
     bookmarked = BookmarkService.is_bookmarked(user.id, target_type, target_id)
     return jsonify(bookmarked=bookmarked), 200

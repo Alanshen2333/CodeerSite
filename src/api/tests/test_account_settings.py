@@ -1,8 +1,6 @@
 import io
 import pytest
 from PIL import Image
-from app.extensions import db
-from app.models.user import User
 from app.models.user_ssh_key import UserSshKey
 from app.services.email_code_service import EmailCodeService
 from app.services.ssh_key_service import SshKeyService
@@ -170,15 +168,21 @@ class TestSshKeys:
                 return FakeResp(204)
             return FakeResp(200)
 
-        monkeypatch.setattr("app.services.gitea_client.GiteaClient._is_available", lambda: True)
-        monkeypatch.setattr("app.services.gitea_client.GiteaClient._admin_request", fake_admin_request)
+        monkeypatch.setattr(
+            "app.services.gitea_client.GiteaClient._is_available", lambda: True
+        )
+        monkeypatch.setattr(
+            "app.services.gitea_client.GiteaClient._admin_request", fake_admin_request
+        )
 
     def test_list_ssh_keys_empty(self, client, auth_headers):
         resp = client.get("/api/auth/ssh-keys", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.get_json()["keys"] == []
 
-    def test_create_ssh_key_success(self, client, auth_headers, gitea_available, public_key):
+    def test_create_ssh_key_success(
+        self, client, auth_headers, gitea_available, public_key
+    ):
         resp = client.post(
             "/api/auth/ssh-keys",
             json={"title": "MacBook", "public_key": public_key},
@@ -190,7 +194,9 @@ class TestSshKeys:
         assert data["key"]["key_type"] == "ssh-ed25519"
         assert data["key"]["fingerprint"].startswith("SHA256:")
 
-    def test_create_ssh_key_duplicate(self, client, auth_headers, gitea_available, public_key):
+    def test_create_ssh_key_duplicate(
+        self, client, auth_headers, gitea_available, public_key
+    ):
         client.post(
             "/api/auth/ssh-keys",
             json={"title": "MacBook", "public_key": public_key},
@@ -211,8 +217,12 @@ class TestSshKeys:
         )
         assert resp.status_code == 400
 
-    def test_create_ssh_key_gitea_unavailable(self, client, auth_headers, monkeypatch, public_key):
-        monkeypatch.setattr("app.services.gitea_client.GiteaClient._is_available", lambda: False)
+    def test_create_ssh_key_gitea_unavailable(
+        self, client, auth_headers, monkeypatch, public_key
+    ):
+        monkeypatch.setattr(
+            "app.services.gitea_client.GiteaClient._is_available", lambda: False
+        )
         resp = client.post(
             "/api/auth/ssh-keys",
             json={"title": "MacBook", "public_key": public_key},
@@ -222,7 +232,9 @@ class TestSshKeys:
         data = resp.get_json()["key"]
         assert data["sync_status"] == "pending"
 
-    def test_delete_ssh_key_success(self, client, auth_headers, gitea_available, public_key):
+    def test_delete_ssh_key_success(
+        self, client, auth_headers, gitea_available, public_key
+    ):
         create_resp = client.post(
             "/api/auth/ssh-keys",
             json={"title": "MacBook", "public_key": public_key},

@@ -13,8 +13,12 @@ class Star(db.Model):
     __tablename__ = "project_stars"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
-    project_id = db.Column(db.String(36), db.ForeignKey("projects.id"), nullable=False, index=True)
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
+    project_id = db.Column(
+        db.String(36), db.ForeignKey("projects.id"), nullable=False, index=True
+    )
     created_at = db.Column(
         db.DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

@@ -6,6 +6,7 @@
 3. 与 Gitea 同步（添加/删除）。
 4. 本地持久化与去重。
 """
+
 import base64
 import hashlib
 import re
@@ -19,7 +20,9 @@ from app.models.user_ssh_key import UserSshKey
 from app.services.gitea_client import GiteaClient
 
 # OpenSSH 公钥基础格式：type base64-body [comment]
-_SSH_KEY_RE = re.compile(r"^(?P<type>ssh-[a-z0-9-]+|ecdsa-sha2-[a-z0-9-]+)\s+(?P<body>[A-Za-z0-9+/=]+)(?:\s+.*)?$")
+_SSH_KEY_RE = re.compile(
+    r"^(?P<type>ssh-[a-z0-9-]+|ecdsa-sha2-[a-z0-9-]+)\s+(?P<body>[A-Za-z0-9+/=]+)(?:\s+.*)?$"
+)
 
 
 class SshKeyService:
@@ -35,7 +38,9 @@ class SshKeyService:
 
         match = _SSH_KEY_RE.match(text)
         if not match:
-            raise ValueError("公钥格式不正确，应为 OpenSSH 单行格式（如 ssh-ed25519 AAAAC3...）。")
+            raise ValueError(
+                "公钥格式不正确，应为 OpenSSH 单行格式（如 ssh-ed25519 AAAAC3...）。"
+            )
 
         key_type = match.group("type")
         key_data = match.group("body")
@@ -55,7 +60,9 @@ class SshKeyService:
         )
         actual_type = serialized.split(b" ", 1)[0].decode("ascii")
         if actual_type != key_type:
-            raise ValueError(f"公钥类型不匹配：声明为 {key_type}，实际为 {actual_type}。")
+            raise ValueError(
+                f"公钥类型不匹配：声明为 {key_type}，实际为 {actual_type}。"
+            )
 
         return key_type, key_data
 
@@ -140,10 +147,14 @@ class SshKeyService:
             key.sync_error = "Gitea 服务不可用，待重试。"
         elif gitea_resp.status_code not in (200, 201):
             current_app.logger.warning(
-                "Gitea 添加 SSH key 失败 %s: %s", gitea_resp.status_code, gitea_resp.text[:200]
+                "Gitea 添加 SSH key 失败 %s: %s",
+                gitea_resp.status_code,
+                gitea_resp.text[:200],
             )
             key.sync_status = "failed"
-            key.sync_error = f"Gitea 返回 {gitea_resp.status_code}：{gitea_resp.text[:200]}"
+            key.sync_error = (
+                f"Gitea 返回 {gitea_resp.status_code}：{gitea_resp.text[:200]}"
+            )
         else:
             gitea_data = gitea_resp.json()
             key.gitea_key_id = str(gitea_data.get("id"))
@@ -178,15 +189,21 @@ class SshKeyService:
             # 404 表示 Gitea 端已不存在，视为成功
             if resp is None:
                 if not force:
-                    raise RuntimeError("Gitea 服务暂不可用，无法同步删除。可使用 force=true 强制删除。")
+                    raise RuntimeError(
+                        "Gitea 服务暂不可用，无法同步删除。可使用 force=true 强制删除。"
+                    )
             elif resp.status_code not in (204, 404):
                 current_app.logger.warning(
                     "Gitea 删除 SSH key 失败 %s: %s", resp.status_code, resp.text[:200]
                 )
                 if not force:
-                    raise RuntimeError("从 Gitea 删除公钥失败，可使用 force=true 强制删除。")
+                    raise RuntimeError(
+                        "从 Gitea 删除公钥失败，可使用 force=true 强制删除。"
+                    )
         elif key.gitea_key_id and not GiteaClient._is_available() and not force:
-            raise RuntimeError("Gitea 服务不可用，无法同步删除。可使用 force=true 强制删除。")
+            raise RuntimeError(
+                "Gitea 服务不可用，无法同步删除。可使用 force=true 强制删除。"
+            )
 
         db.session.delete(key)
         db.session.commit()

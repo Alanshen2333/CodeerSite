@@ -1,7 +1,7 @@
 """Gitea 集成测试 —— 所有 GiteaClient 方法均 mock，不打真实服务。"""
+
 from unittest.mock import patch, MagicMock
 
-import pytest
 
 from app.models.user import User
 from app.models.project import Project
@@ -32,25 +32,35 @@ def _mock_client(responses):
 
 def _login(client, email="test@example.com", password="password123"):
     """Helper: 注册并登录，返回 headers。"""
-    client.post("/api/auth/register", json={
-        "username": "testuser",
-        "email": email,
-        "password": password,
-    })
-    resp = client.post("/api/auth/login", json={
-        "email": email,
-        "password": password,
-    })
+    client.post(
+        "/api/auth/register",
+        json={
+            "username": "testuser",
+            "email": email,
+            "password": password,
+        },
+    )
+    resp = client.post(
+        "/api/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
     return {"Authorization": f"Bearer {resp.get_json()['access_token']}"}
 
 
 def _create_project(client, headers, name="Test Project"):
     """Helper: 创建项目，返回 slug。"""
-    resp = client.post("/api/projects", json={
-        "name": name,
-        "description": "A test project",
-        "visibility": "public",
-    }, headers=headers)
+    resp = client.post(
+        "/api/projects",
+        json={
+            "name": name,
+            "description": "A test project",
+            "visibility": "public",
+        },
+        headers=headers,
+    )
     return resp.get_json()["project"]["slug"]
 
 
@@ -63,11 +73,14 @@ class TestRegisterGiteaBridge:
         mock_client.admin_create_user.return_value = {"id": 42}
         mock_client.admin_create_user_token.return_value = "gitea-token-sha"
 
-        resp = client.post("/api/auth/register", json={
-            "username": "gituser",
-            "email": "git@example.com",
-            "password": "Password123!",
-        })
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "username": "gituser",
+                "email": "git@example.com",
+                "password": "Password123!",
+            },
+        )
         assert resp.status_code == 201
 
         mock_client.admin_create_user.assert_called_once()
@@ -82,11 +95,14 @@ class TestRegisterGiteaBridge:
     def test_register_degrades_when_gitea_down(self, mock_client, client):
         mock_client._is_available.return_value = False
 
-        resp = client.post("/api/auth/register", json={
-            "username": "nogituser",
-            "email": "nogit@example.com",
-            "password": "Password123!",
-        })
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "username": "nogituser",
+                "email": "nogit@example.com",
+                "password": "Password123!",
+            },
+        )
         assert resp.status_code == 201
 
         mock_client.admin_create_user.assert_not_called()
@@ -131,27 +147,37 @@ class TestRepoEndpoints:
     def test_create_repo_non_owner_forbidden(self, mock_client, client):
         mock_client._is_available.return_value = True
 
-        owner_headers = _login(client, email="owner@example.com", password="Password123!")
+        owner_headers = _login(
+            client, email="owner@example.com", password="Password123!"
+        )
         slug = _create_project(client, owner_headers)
 
         # 注册另一个用户并尝试创建仓库
-        client.post("/api/auth/register", json={
-            "username": "memberuser",
-            "email": "member@example.com",
-            "password": "Password123!",
-        })
+        client.post(
+            "/api/auth/register",
+            json={
+                "username": "memberuser",
+                "email": "member@example.com",
+                "password": "Password123!",
+            },
+        )
         ProjectService.add_member(
             Project.query.filter_by(slug=slug).first().id,
             User.query.filter_by(username="memberuser").first().id,
             "member",
         )
-        resp = client.post("/api/auth/login", json={
-            "email": "member@example.com",
-            "password": "Password123!",
-        })
+        resp = client.post(
+            "/api/auth/login",
+            json={
+                "email": "member@example.com",
+                "password": "Password123!",
+            },
+        )
         member_headers = {"Authorization": f"Bearer {resp.get_json()['access_token']}"}
 
-        resp = client.post(f"/api/projects/{slug}/repo", json={}, headers=member_headers)
+        resp = client.post(
+            f"/api/projects/{slug}/repo", json={}, headers=member_headers
+        )
         assert resp.status_code == 403
         mock_client.admin_create_repo.assert_not_called()
 
@@ -215,7 +241,9 @@ class TestRepoEndpoints:
         resp = client.delete(f"/api/projects/{slug}/repo", headers=headers)
         assert resp.status_code == 200
 
-        mock_client.admin_delete_repo.assert_called_once_with("codeersite", "test-project")
+        mock_client.admin_delete_repo.assert_called_once_with(
+            "codeersite", "test-project"
+        )
         assert project.gitea_repo_id is None
         assert project.gitea_full_name is None
 
@@ -226,12 +254,17 @@ class TestRepoReadonlyEndpoints:
     @patch("app.api.repos.GiteaClient")
     def test_list_branches(self, mock_client, client):
         mock_client.admin_get_repo.return_value = {"default_branch": "main"}
-        mock_client.for_user.return_value = _mock_client({
-            "/api/v1/repos/codeersite/test-project/branches": _mock_response(200, [
-                {"name": "main", "commit": {"id": "abc123"}},
-                {"name": "dev", "commit": {"id": "def456"}},
-            ]),
-        })
+        mock_client.for_user.return_value = _mock_client(
+            {
+                "/api/v1/repos/codeersite/test-project/branches": _mock_response(
+                    200,
+                    [
+                        {"name": "main", "commit": {"id": "abc123"}},
+                        {"name": "dev", "commit": {"id": "def456"}},
+                    ],
+                ),
+            }
+        )
 
         headers = _login(client)
         slug = _create_project(client, headers)
@@ -248,12 +281,23 @@ class TestRepoReadonlyEndpoints:
     @patch("app.api.repos.GiteaClient")
     def test_get_tree(self, mock_client, client):
         mock_client.admin_get_repo.return_value = {"default_branch": "main"}
-        mock_client.for_user.return_value = _mock_client({
-            "/api/v1/repos/codeersite/test-project/contents/": _mock_response(200, [
-                {"name": "src", "path": "src", "type": "dir", "sha": "d1"},
-                {"name": "README.md", "path": "README.md", "type": "file", "size": 42, "sha": "f1"},
-            ]),
-        })
+        mock_client.for_user.return_value = _mock_client(
+            {
+                "/api/v1/repos/codeersite/test-project/contents/": _mock_response(
+                    200,
+                    [
+                        {"name": "src", "path": "src", "type": "dir", "sha": "d1"},
+                        {
+                            "name": "README.md",
+                            "path": "README.md",
+                            "type": "file",
+                            "size": 42,
+                            "sha": "f1",
+                        },
+                    ],
+                ),
+            }
+        )
 
         headers = _login(client)
         slug = _create_project(client, headers)
@@ -274,18 +318,23 @@ class TestRepoReadonlyEndpoints:
 
         content = base64.b64encode(b"hello world").decode()
         mock_client.admin_get_repo.return_value = {"default_branch": "main"}
-        mock_client.for_user.return_value = _mock_client({
-            "/api/v1/repos/codeersite/test-project/contents/README.md": _mock_response(200, {
-                "name": "README.md",
-                "path": "README.md",
-                "sha": "f1",
-                "size": 11,
-                "encoding": "base64",
-                "content": content,
-                "html_url": "http://gitea/codeersite/test-project/blob/main/README.md",
-                "download_url": None,
-            }),
-        })
+        mock_client.for_user.return_value = _mock_client(
+            {
+                "/api/v1/repos/codeersite/test-project/contents/README.md": _mock_response(
+                    200,
+                    {
+                        "name": "README.md",
+                        "path": "README.md",
+                        "sha": "f1",
+                        "size": 11,
+                        "encoding": "base64",
+                        "content": content,
+                        "html_url": "http://gitea/codeersite/test-project/blob/main/README.md",
+                        "download_url": None,
+                    },
+                ),
+            }
+        )
 
         headers = _login(client)
         slug = _create_project(client, headers)
@@ -293,7 +342,9 @@ class TestRepoReadonlyEndpoints:
         project.gitea_repo_id = "99"
         project.gitea_full_name = "codeersite/test-project"
 
-        resp = client.get(f"/api/projects/{slug}/repo/blob?path=README.md", headers=headers)
+        resp = client.get(
+            f"/api/projects/{slug}/repo/blob?path=README.md", headers=headers
+        )
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["blob"]["content"] == "hello world"
@@ -301,18 +352,27 @@ class TestRepoReadonlyEndpoints:
     @patch("app.api.repos.GiteaClient")
     def test_list_commits(self, mock_client, client):
         mock_client.admin_get_repo.return_value = {"default_branch": "main"}
-        mock_client.for_user.return_value = _mock_client({
-            "/api/v1/repos/codeersite/test-project/commits": _mock_response(200, [
-                {
-                    "sha": "abc123",
-                    "commit": {
-                        "message": "init\n\nmore",
-                        "author": {"name": "Dev", "email": "dev@example.com", "date": "2026-07-03T00:00:00Z"},
-                    },
-                    "html_url": "http://gitea/commit/abc123",
-                }
-            ]),
-        })
+        mock_client.for_user.return_value = _mock_client(
+            {
+                "/api/v1/repos/codeersite/test-project/commits": _mock_response(
+                    200,
+                    [
+                        {
+                            "sha": "abc123",
+                            "commit": {
+                                "message": "init\n\nmore",
+                                "author": {
+                                    "name": "Dev",
+                                    "email": "dev@example.com",
+                                    "date": "2026-07-03T00:00:00Z",
+                                },
+                            },
+                            "html_url": "http://gitea/commit/abc123",
+                        }
+                    ],
+                ),
+            }
+        )
 
         headers = _login(client)
         slug = _create_project(client, headers)
@@ -331,11 +391,22 @@ class TestRepoReadonlyEndpoints:
     def test_public_repo_anonymous_tree(self, mock_ro_client, mock_client, client):
         """公开项目允许匿名访问 tree。"""
         mock_client.admin_get_repo.return_value = {"default_branch": "main"}
-        mock_ro_instance = _mock_client({
-            "/api/v1/repos/codeersite/test-project/contents/": _mock_response(200, [
-                {"name": "README.md", "path": "README.md", "type": "file", "size": 10, "sha": "f1"},
-            ]),
-        })
+        mock_ro_instance = _mock_client(
+            {
+                "/api/v1/repos/codeersite/test-project/contents/": _mock_response(
+                    200,
+                    [
+                        {
+                            "name": "README.md",
+                            "path": "README.md",
+                            "type": "file",
+                            "size": 10,
+                            "sha": "f1",
+                        },
+                    ],
+                ),
+            }
+        )
         mock_ro_client.return_value = mock_ro_instance
 
         headers = _login(client)
@@ -344,6 +415,7 @@ class TestRepoReadonlyEndpoints:
         project.gitea_repo_id = "99"
         project.gitea_full_name = "codeersite/test-project"
         from app.extensions import db
+
         db.session.commit()
 
         with client.application.app_context():
@@ -365,6 +437,7 @@ class TestRepoReadonlyEndpoints:
         project.gitea_repo_id = "99"
         project.gitea_full_name = "codeersite/test-project"
         from app.extensions import db
+
         db.session.commit()
 
         resp = client.get(f"/api/projects/{slug}/repo/tree")

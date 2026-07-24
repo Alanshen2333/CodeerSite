@@ -16,16 +16,26 @@ class SearchDocument(db.Model):
 
     __tablename__ = "search_documents"
     __table_args__ = (
-        db.UniqueConstraint("doc_id", "source_type", name="uq_search_documents_doc_source"),
+        db.UniqueConstraint(
+            "doc_id", "source_type", name="uq_search_documents_doc_source"
+        ),
         # GIN 索引：tsvector 全文搜索
-        db.Index("ix_search_documents_search_vector", "search_vector", postgresql_using="gin"),
+        db.Index(
+            "ix_search_documents_search_vector", "search_vector", postgresql_using="gin"
+        ),
         # GIN 索引：pg_trgm 支持 ILIKE 中文子串匹配
-        db.Index("ix_search_documents_title_trgm", "title",
-                 postgresql_using="gin",
-                 postgresql_ops={"title": "gin_trgm_ops"}),
-        db.Index("ix_search_documents_body_text_trgm", "body_text",
-                 postgresql_using="gin",
-                 postgresql_ops={"body_text": "gin_trgm_ops"}),
+        db.Index(
+            "ix_search_documents_title_trgm",
+            "title",
+            postgresql_using="gin",
+            postgresql_ops={"title": "gin_trgm_ops"},
+        ),
+        db.Index(
+            "ix_search_documents_body_text_trgm",
+            "body_text",
+            postgresql_using="gin",
+            postgresql_ops={"body_text": "gin_trgm_ops"},
+        ),
         # B-tree 索引：按 source_type 筛选
         db.Index("ix_search_documents_source_type", "source_type"),
     )

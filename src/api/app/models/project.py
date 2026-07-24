@@ -6,16 +6,24 @@ from app.extensions import db
 class Project(db.Model):
     __tablename__ = "projects"
     __table_args__ = (
-        db.CheckConstraint("star_count >= 0", name="ck_projects_star_count_nonnegative"),
-        db.CheckConstraint("next_issue_number >= 1", name="ck_projects_next_issue_number_positive"),
+        db.CheckConstraint(
+            "star_count >= 0", name="ck_projects_star_count_nonnegative"
+        ),
+        db.CheckConstraint(
+            "next_issue_number >= 1", name="ck_projects_next_issue_number_positive"
+        ),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(100), nullable=False)
     slug = db.Column(db.String(100), unique=True, nullable=False, index=True)
     description = db.Column(db.Text, nullable=True)
-    owner_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
-    visibility = db.Column(db.String(10), default="public", nullable=False)  # public/private
+    owner_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
+    visibility = db.Column(
+        db.String(10), default="public", nullable=False
+    )  # public/private
     star_count = db.Column(db.Integer, default=0, nullable=False)
     next_issue_number = db.Column(db.Integer, default=1, nullable=False)
 
@@ -36,11 +44,22 @@ class Project(db.Model):
     )
 
     owner = db.relationship("User", backref="owned_projects")
-    members = db.relationship("ProjectMember", backref="project", lazy="dynamic", cascade="all, delete-orphan")
-    issues = db.relationship("Issue", backref="project", lazy="dynamic", cascade="all, delete-orphan")
-    milestones = db.relationship("Milestone", backref="project", lazy="dynamic", cascade="all, delete-orphan")
-    kanban_columns = db.relationship("KanbanColumn", backref="project", lazy="dynamic",
-                                     cascade="all, delete-orphan", order_by="KanbanColumn.position")
+    members = db.relationship(
+        "ProjectMember", backref="project", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    issues = db.relationship(
+        "Issue", backref="project", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    milestones = db.relationship(
+        "Milestone", backref="project", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    kanban_columns = db.relationship(
+        "KanbanColumn",
+        backref="project",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+        order_by="KanbanColumn.position",
+    )
 
     def to_dict(self):
         return {

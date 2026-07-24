@@ -5,12 +5,21 @@ from app.models.user import User
 
 
 def _login(client, username, email):
-    client.post("/api/auth/register", json={
-        "username": username, "email": email, "password": "password123",
-    })
-    resp = client.post("/api/auth/login", json={
-        "email": email, "password": "password123",
-    })
+    client.post(
+        "/api/auth/register",
+        json={
+            "username": username,
+            "email": email,
+            "password": "password123",
+        },
+    )
+    resp = client.post(
+        "/api/auth/login",
+        json={
+            "email": email,
+            "password": "password123",
+        },
+    )
     return {"Authorization": f"Bearer {resp.get_json()['access_token']}"}
 
 
@@ -32,26 +41,38 @@ class TestUpdateMeWhitelist:
 
     def test_cannot_set_role(self, client, auth_headers):
         """尝试通过 update_me 设置 role -> 422。"""
-        resp = client.patch("/api/auth/me", json={
-            "role": "admin",
-        }, headers=auth_headers)
+        resp = client.patch(
+            "/api/auth/me",
+            json={
+                "role": "admin",
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 422
 
     def test_cannot_set_is_active(self, client, auth_headers):
         """尝试通过 update_me 设置 is_active -> 422。"""
-        resp = client.patch("/api/auth/me", json={
-            "is_active": False,
-        }, headers=auth_headers)
+        resp = client.patch(
+            "/api/auth/me",
+            json={
+                "is_active": False,
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 422
 
     def test_normal_fields_still_work(self, client, auth_headers):
         """正常字段仍可修改。"""
-        resp = client.patch("/api/auth/me", json={
-            "display_name": "新名字",
-            "bio": "新简介",
-            "website": "https://example.com",
-            "location": "上海",
-        }, headers=auth_headers)
+        resp = client.patch(
+            "/api/auth/me",
+            json={
+                "display_name": "新名字",
+                "bio": "新简介",
+                "website": "https://example.com",
+                "location": "上海",
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 200
         data = resp.get_json()["user"]
         assert data["display_name"] == "新名字"
@@ -61,9 +82,13 @@ class TestUpdateMeWhitelist:
 
     def test_role_not_escalated(self, client, app, auth_headers):
         """即使绕过前端直接发 role，数据库中 role 不变。"""
-        client.patch("/api/auth/me", json={
-            "role": "admin",
-        }, headers=auth_headers)
+        client.patch(
+            "/api/auth/me",
+            json={
+                "role": "admin",
+            },
+            headers=auth_headers,
+        )
         with app.app_context():
             user = User.query.filter_by(username="testuser").first()
             assert user.role == "user"
@@ -81,9 +106,13 @@ class TestAdminUserUpdate:
         _promote_admin(app, "adminuser")
         admin_headers = _login(client, "adminuser", "admin@example.com")
 
-        resp = client.patch(f"/api/admin/users/{target_id}", json={
-            "role": "moderator",
-        }, headers=admin_headers)
+        resp = client.patch(
+            f"/api/admin/users/{target_id}",
+            json={
+                "role": "moderator",
+            },
+            headers=admin_headers,
+        )
         assert resp.status_code == 200
         assert resp.get_json()["user"]["role"] == "moderator"
 
@@ -96,9 +125,13 @@ class TestAdminUserUpdate:
         _promote_admin(app, "adminuser2")
         admin_headers = _login(client, "adminuser2", "admin2@example.com")
 
-        resp = client.patch(f"/api/admin/users/{target_id}", json={
-            "role": "superadmin",
-        }, headers=admin_headers)
+        resp = client.patch(
+            f"/api/admin/users/{target_id}",
+            json={
+                "role": "superadmin",
+            },
+            headers=admin_headers,
+        )
         assert resp.status_code == 422
 
     def test_update_is_active(self, client, app, auth_headers):
@@ -110,9 +143,13 @@ class TestAdminUserUpdate:
         _promote_admin(app, "adminuser3")
         admin_headers = _login(client, "adminuser3", "admin3@example.com")
 
-        resp = client.patch(f"/api/admin/users/{target_id}", json={
-            "is_active": False,
-        }, headers=admin_headers)
+        resp = client.patch(
+            f"/api/admin/users/{target_id}",
+            json={
+                "is_active": False,
+            },
+            headers=admin_headers,
+        )
         assert resp.status_code == 200
         assert resp.get_json()["user"]["is_active"] is False
 
@@ -121,9 +158,13 @@ class TestAdminUserUpdate:
         _login(client, "targetuser4", "target4@example.com")
         target_id = _get_user_id(app, "targetuser4")
 
-        resp = client.patch(f"/api/admin/users/{target_id}", json={
-            "role": "admin",
-        }, headers=auth_headers)
+        resp = client.patch(
+            f"/api/admin/users/{target_id}",
+            json={
+                "role": "admin",
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 403
 
     def test_rejects_unknown_field(self, client, app, auth_headers):
@@ -135,7 +176,11 @@ class TestAdminUserUpdate:
         _promote_admin(app, "adminuser5")
         admin_headers = _login(client, "adminuser5", "admin5@example.com")
 
-        resp = client.patch(f"/api/admin/users/{target_id}", json={
-            "password_hash": "malicious",
-        }, headers=admin_headers)
+        resp = client.patch(
+            f"/api/admin/users/{target_id}",
+            json={
+                "password_hash": "malicious",
+            },
+            headers=admin_headers,
+        )
         assert resp.status_code == 422

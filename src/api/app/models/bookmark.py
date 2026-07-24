@@ -9,7 +9,9 @@ class Bookmark(db.Model):
     __tablename__ = "bookmarks"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
     target_type = db.Column(db.String(20), nullable=False)
     target_id = db.Column(db.String(36), nullable=False, index=True)
     created_at = db.Column(
@@ -19,7 +21,9 @@ class Bookmark(db.Model):
     )
 
     __table_args__ = (
-        db.UniqueConstraint("user_id", "target_type", "target_id", name="uq_user_target_bookmark"),
+        db.UniqueConstraint(
+            "user_id", "target_type", "target_id", name="uq_user_target_bookmark"
+        ),
     )
 
     user = db.relationship("User", backref="bookmarks")

@@ -42,7 +42,10 @@ class QuestionService:
 
     @staticmethod
     def update_question(
-        question: Question, title: str = None, body: str = None, tag_ids: List[str] = None
+        question: Question,
+        title: str = None,
+        body: str = None,
+        tag_ids: List[str] = None,
     ) -> Question:
         """Update question fields."""
         if title is not None:
@@ -150,7 +153,9 @@ class QuestionService:
             body_text=question.body[:1000],
             tags=tag_names,
             created_at=question.created_at,
-            extra={"author_name": question.author.display_name if question.author else None},
+            extra={
+                "author_name": question.author.display_name if question.author else None
+            },
         )
 
     @staticmethod
