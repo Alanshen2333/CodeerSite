@@ -14,19 +14,15 @@ import {
   LoginOutlined,
   LogoutOutlined,
   PlusOutlined,
-  SunOutlined,
-  MoonOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/providers/AuthProvider";
-import { useTheme } from "@/providers/ThemeProvider";
 import { layout } from "@/styles/tokens";
 
 const { Header } = Layout;
 
 export default function Navbar() {
   const { user, loading, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
   const userMenu = {
@@ -111,15 +107,6 @@ export default function Navbar() {
         <Space align="center" className="items-center">
         <Tooltip title="搜索">
           <Button icon={<SearchOutlined />} type="text" onClick={() => router.push("/search")} />
-        </Tooltip>
-
-        {/* 主题切换 */}
-        <Tooltip title={theme === "light" ? "深色模式" : "浅色模式"}>
-          <Button
-            icon={theme === "light" ? <MoonOutlined /> : <SunOutlined />}
-            type="text"
-            onClick={toggleTheme}
-          />
         </Tooltip>
 
         {loading ? (
