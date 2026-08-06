@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Layout, Menu, Button, Space, Avatar, Dropdown, Spin, Tooltip } from "antd";
@@ -28,6 +29,9 @@ export default function Navbar() {
   const { user, loading, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
+  const [themeReady, setThemeReady] = useState(false);
+
+  useEffect(() => setThemeReady(true), []);
 
   const userMenu = {
     items: [
@@ -79,7 +83,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className="text-xl font-bold text-primary no-underline mr-8"
+          className="mr-2 shrink-0 text-xl font-bold text-primary no-underline sm:mr-8"
         >
           Codeersite
         </Link>
@@ -87,7 +91,7 @@ export default function Navbar() {
         {/* Navigation */}
         <Menu
           mode="horizontal"
-          className="flex-1 !border-none !bg-transparent"
+          className="hidden min-w-0 flex-1 !border-none !bg-transparent md:block"
           items={[
             {
               key: "questions",
@@ -110,13 +114,26 @@ export default function Navbar() {
         {/* Right actions */}
         <Space align="center" className="items-center">
         <Tooltip title="搜索">
-          <Button icon={<SearchOutlined />} type="text" onClick={() => router.push("/search")} />
+          <Button
+            aria-label="搜索"
+            className="!hidden sm:!inline-flex"
+            icon={<SearchOutlined />}
+            type="text"
+            onClick={() => router.push("/search")}
+          />
         </Tooltip>
 
         {/* 主题切换 */}
         <Tooltip title={theme === "light" ? "深色模式" : "浅色模式"}>
           <Button
-            icon={theme === "light" ? <MoonOutlined /> : <SunOutlined />}
+            aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
+            icon={
+              themeReady
+                ? theme === "light"
+                  ? <MoonOutlined />
+                  : <SunOutlined />
+                : <span aria-hidden className="inline-block size-4" />
+            }
             type="text"
             onClick={toggleTheme}
           />
@@ -127,7 +144,7 @@ export default function Navbar() {
         ) : user ? (
           <>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => router.push("/questions/ask")}>
-              提问
+              <span className="hidden sm:inline">提问</span>
             </Button>
             <Button icon={<BellOutlined />} type="text" onClick={() => router.push("/notifications")} />
             <Dropdown menu={userMenu} placement="bottomRight">
@@ -141,10 +158,11 @@ export default function Navbar() {
           <>
             <Button
               className="!inline-flex !h-9 !items-center"
+              aria-label="登录"
               icon={<LoginOutlined />}
               onClick={() => router.push("/login")}
             >
-              登录
+              <span className="hidden sm:inline">登录</span>
             </Button>
             <Button
               className="!inline-flex !h-9 !items-center"

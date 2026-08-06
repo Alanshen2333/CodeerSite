@@ -101,7 +101,7 @@ export default function AskQuestionPage() {
           </Form.Item>
 
           {previewVisible && previewHtml && (
-            <Card size="small" className="mb-4 bg-gray-50">
+            <Card size="small" className="mb-4 !bg-bg-elevated">
               <div className="whitespace-pre-wrap font-mono text-xs">
                 {previewHtml}
               </div>

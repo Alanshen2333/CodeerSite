@@ -31,11 +31,7 @@ export default function AnswerCard({
   return (
     <Card
       id={`answer-${answer.id}`}
-      className="mb-3"
-      style={{
-        borderColor: answer.is_accepted ? "#0eb478" : undefined,
-        borderWidth: answer.is_accepted ? 2 : 1,
-      }}
+      className={`mb-3 ${answer.is_accepted ? "!border-2 !border-success" : ""}`}
       styles={{ body: { padding: "16px 20px" } }}
     >
       <div className="flex gap-4">

@@ -1,11 +1,19 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { ConfigProvider, theme as antdTheme } from "antd";
+import { ConfigProvider } from "antd";
 import zhCN from "antd/locale/zh_CN";
-import { antdThemeTokens } from "@/styles/tokens";
-
-type Theme = "light" | "dark";
+import { createAntdTheme } from "@/styles/antd-theme";
+import type { Theme } from "@/styles/tokens";
+import {
+  applyTheme,
+  isTheme,
+  readThemePreference,
+  storeThemePreference,
+  systemTheme,
+  THEME_MEDIA_QUERY,
+  THEME_STORAGE_KEY,
+} from "@/lib/theme";
 
 interface ThemeContextType {
   theme: Theme;
@@ -14,54 +22,55 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
-function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "light";
-  return (localStorage.getItem("theme") as Theme) || "light";
-}
-
-function applyHtmlClass(theme: Theme) {
-  const root = document.documentElement;
-  if (theme === "dark") {
-    root.classList.add("dark");
-  } else {
-    root.classList.remove("dark");
-  }
-}
-
 export default function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [preference, setPreference] = useState<Theme | null>(null);
+  const [system, setSystem] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
+  const theme = preference ?? system;
 
-  // 初始化：从 localStorage 读取
   useEffect(() => {
-    const stored = getStoredTheme();
-    setTheme(stored);
-    applyHtmlClass(stored);
+    const media = window.matchMedia(THEME_MEDIA_QUERY);
+    const stored = readThemePreference();
+    const initialSystem = systemTheme(media.matches);
+
+    setPreference(stored);
+    setSystem(initialSystem);
+    applyTheme(stored ?? initialSystem);
     setMounted(true);
+
+    const handleSystemChange = (event: MediaQueryListEvent) => {
+      setSystem(systemTheme(event.matches));
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === THEME_STORAGE_KEY) {
+        setPreference(isTheme(event.newValue) ? event.newValue : null);
+      }
+    };
+
+    media.addEventListener("change", handleSystemChange);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      media.removeEventListener("change", handleSystemChange);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
-  // 切换主题
+  useEffect(() => {
+    if (mounted) applyTheme(theme);
+  }, [mounted, theme]);
+
   const toggleTheme = useCallback(() => {
-    setTheme((prev) => {
-      const next = prev === "light" ? "dark" : "light";
-      localStorage.setItem("theme", next);
-      applyHtmlClass(next);
-      return next;
-    });
-  }, []);
+    const next = theme === "light" ? "dark" : "light";
+    setPreference(next);
+    storeThemePreference(next);
+    applyTheme(next);
+  }, [theme]);
 
-  // antd 主题算法（mounted 前不使用 darkAlgorithm，避免 hydration mismatch）
-  const algorithm = mounted && theme === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm;
+  const resolvedTheme = mounted ? theme : "light";
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <ConfigProvider
-        locale={zhCN}
-        theme={{
-          algorithm,
-          token: antdThemeTokens,
-        }}
-      >
+      <ConfigProvider locale={zhCN} theme={createAntdTheme(resolvedTheme)}>
         {children}
       </ConfigProvider>
     </ThemeContext.Provider>

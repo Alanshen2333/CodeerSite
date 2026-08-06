@@ -5,6 +5,7 @@ import ThemeProvider from "@/providers/ThemeProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import Navbar from "@/components/layout/Navbar";
 import MessageBridge from "@/components/MessageBridge";
+import { themeBootstrapScript } from "@/lib/theme-bootstrap";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,19 +26,10 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
-        {/* 防深色模式闪烁：React hydrate 之前从 localStorage 读取主题 */}
+        {/* React hydrate 前解析用户偏好或系统主题，避免页面外壳闪烁。 */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var theme = localStorage.getItem('theme');
-                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                    document.documentElement.classList.add('dark');
-                  }
-                } catch(e) {}
-              })();
-            `,
+            __html: themeBootstrapScript,
           }}
         />
       </head>

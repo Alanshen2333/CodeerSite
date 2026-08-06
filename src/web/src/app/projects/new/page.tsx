@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input, Button, Card, Form, Space, Radio } from "antd";
+import axios from "axios";
 import { message } from "@/lib/message";
 import { useAuth } from "@/providers/AuthProvider";
 import { createProject } from "@/lib/api/projects";
@@ -26,8 +27,11 @@ export default function NewProjectPage() {
       const r = await createProject(values);
       message.success("项目创建成功！");
       router.push(`/projects/${r.project.slug}`);
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || "创建失败");
+    } catch (err: unknown) {
+      const detail = axios.isAxiosError<{ message?: string }>(err)
+        ? err.response?.data?.message
+        : undefined;
+      message.error(detail || "创建失败");
     } finally {
       setLoading(false);
     }
