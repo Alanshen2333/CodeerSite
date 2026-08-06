@@ -64,12 +64,11 @@ export default function Navbar() {
 
   return (
     <Header
-      className="bg-bg-container border-b border-border sticky top-0 z-[100] !p-0"
+      className="bg-bg-container/80 backdrop-blur-md border-b border-border sticky top-0 z-[100] !p-0"
       style={{
         // iOS 安全区域：顶栏不被状态栏/刘海遮挡；高度自适应 = safe-area + 56px 内容区
         paddingTop: "env(safe-area-inset-top)",
         height: "auto",
-        lineHeight: "56px",
       }}
     >
       <div
@@ -109,7 +108,7 @@ export default function Navbar() {
         />
 
         {/* Right actions */}
-        <Space>
+        <Space align="center" className="items-center">
         <Tooltip title="搜索">
           <Button icon={<SearchOutlined />} type="text" onClick={() => router.push("/search")} />
         </Tooltip>
@@ -140,10 +139,18 @@ export default function Navbar() {
           </>
         ) : (
           <>
-            <Button icon={<LoginOutlined />} onClick={() => router.push("/login")}>
+            <Button
+              className="!inline-flex !h-9 !items-center"
+              icon={<LoginOutlined />}
+              onClick={() => router.push("/login")}
+            >
               登录
             </Button>
-            <Button type="primary" onClick={() => router.push("/register")}>
+            <Button
+              className="!inline-flex !h-9 !items-center"
+              type="primary"
+              onClick={() => router.push("/register")}
+            >
               注册
             </Button>
           </>
