@@ -12,47 +12,105 @@
  * - 系统字体栈
  */
 
-// ── 品牌色 ────────────────────────────────────────────
+export interface SemanticPalette {
+  primary: string;
+  primaryHover: string;
+  success: string;
+  warning: string;
+  error: string;
+  info: string;
+  link: string;
+  bgLayout: string;
+  bgContainer: string;
+  bgElevated: string;
+  border: string;
+  borderSecondary: string;
+  text: string;
+  textSecondary: string;
+  textTertiary: string;
+  textDisabled: string;
+}
+
+// ── 主题语义 Palette ──────────────────────────────────
+export const themePalettes = {
+  light: {
+    primary: "#5e6ad2",
+    primaryHover: "#4f5bc5",
+    success: "#0eb478",
+    warning: "#f5a623",
+    error: "#e5484d",
+    info: "#5e6ad2",
+    link: "#5e6ad2",
+    bgLayout: "#fbfbfc",
+    bgContainer: "#ffffff",
+    bgElevated: "#ffffff",
+    border: "#e8e8ec",
+    borderSecondary: "#f0f0f2",
+    text: "#1a1a2e",
+    textSecondary: "#6b6b7b",
+    textTertiary: "#9b9bae",
+    textDisabled: "#c2c2cc",
+  },
+  dark: {
+    primary: "#7b7de6",
+    primaryHover: "#8f91ed",
+    success: "#2dd4a0",
+    warning: "#f7b955",
+    error: "#f87171",
+    info: "#7b7de6",
+    link: "#7b7de6",
+    bgLayout: "#0d0d12",
+    bgContainer: "#16161d",
+    bgElevated: "#1e1e26",
+    border: "#2a2a35",
+    borderSecondary: "#1e1e28",
+    text: "#ededf0",
+    textSecondary: "#9b9bae",
+    textTertiary: "#6b6b7b",
+    textDisabled: "#4a4a55",
+  },
+} as const satisfies Record<string, SemanticPalette>;
+
+export type Theme = keyof typeof themePalettes;
+
+// 兼容现有静态消费者；主题组件应优先使用 themePalettes。
 export const colors = {
-  primary: "#5e6ad2",
-  success: "#0eb478",
-  warning: "#f5a623",
-  error: "#e5484d",
-  info: "#5e6ad2",
-  link: "#5e6ad2",
+  primary: themePalettes.light.primary,
+  success: themePalettes.light.success,
+  warning: themePalettes.light.warning,
+  error: themePalettes.light.error,
+  info: themePalettes.light.info,
+  link: themePalettes.light.link,
 } as const;
 
-// ── 中性色（浅色主题） ──────────────────────────────
 export const neutral = {
-  bgLayout: "#fbfbfc",
-  bgContainer: "#ffffff",
-  bgElevated: "#ffffff",
-  border: "#e8e8ec",
-  borderSecondary: "#f0f0f2",
+  bgLayout: themePalettes.light.bgLayout,
+  bgContainer: themePalettes.light.bgContainer,
+  bgElevated: themePalettes.light.bgElevated,
+  border: themePalettes.light.border,
+  borderSecondary: themePalettes.light.borderSecondary,
 } as const;
 
-// ── 文本色 ─────────────────────────────────────────────
 export const text = {
-  primary: "#1a1a2e",
-  secondary: "#6b6b7b",
-  tertiary: "#9b9bae",
-  disabled: "#c2c2cc",
+  primary: themePalettes.light.text,
+  secondary: themePalettes.light.textSecondary,
+  tertiary: themePalettes.light.textTertiary,
+  disabled: themePalettes.light.textDisabled,
 } as const;
 
-// ── 深色主题中性色 ──────────────────────────────────
 export const darkNeutral = {
-  bgLayout: "#0d0d12",
-  bgContainer: "#16161d",
-  bgElevated: "#1e1e26",
-  border: "#2a2a35",
-  borderSecondary: "#1e1e28",
+  bgLayout: themePalettes.dark.bgLayout,
+  bgContainer: themePalettes.dark.bgContainer,
+  bgElevated: themePalettes.dark.bgElevated,
+  border: themePalettes.dark.border,
+  borderSecondary: themePalettes.dark.borderSecondary,
 } as const;
 
 export const darkText = {
-  primary: "#ededf0",
-  secondary: "#9b9bae",
-  tertiary: "#6b6b7b",
-  disabled: "#4a4a55",
+  primary: themePalettes.dark.text,
+  secondary: themePalettes.dark.textSecondary,
+  tertiary: themePalettes.dark.textTertiary,
+  disabled: themePalettes.dark.textDisabled,
 } as const;
 
 // ── 圆角 ────────────────────────────────────────────────
@@ -148,19 +206,7 @@ export const zIndex = {
 
 // ── Ant Design ConfigProvider theme 配置 ─────────────
 // 可直接解构传入 ConfigProvider 的 theme.token
-export const antdThemeTokens = {
-  // 品牌色
-  colorPrimary: colors.primary,
-  colorSuccess: colors.success,
-  colorWarning: colors.warning,
-  colorError: colors.error,
-  colorInfo: colors.info,
-  colorLink: colors.link,
-
-  // 中性色
-  colorBgBase: "#ffffff",
-  colorTextBase: text.primary,
-
+export const antdBaseTokens = {
   // 字体
   fontFamily: typography.fontFamily,
   fontFamilyCode: typography.fontFamilyCode,

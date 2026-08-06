@@ -199,17 +199,17 @@ function ProjectPageInner() {
         </Col>
         <Col xs={12} sm={6}>
           <Card className="shadow-sm">
-            <Statistic title="待处理" value={stats.open} styles={{ content: { color: "#5e6ad2" } }} />
+            <Statistic title="待处理" value={stats.open} styles={{ content: { color: "var(--tw-color-primary)" } }} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
           <Card className="shadow-sm">
-            <Statistic title="进行中" value={stats.in_progress} styles={{ content: { color: "#f5a623" } }} />
+            <Statistic title="进行中" value={stats.in_progress} styles={{ content: { color: "var(--tw-color-warning)" } }} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
           <Card className="shadow-sm">
-            <Statistic title="已关闭" value={stats.closed} styles={{ content: { color: "#0eb478" } }} />
+            <Statistic title="已关闭" value={stats.closed} styles={{ content: { color: "var(--tw-color-success)" } }} />
           </Card>
         </Col>
       </Row>

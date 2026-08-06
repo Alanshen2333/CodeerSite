@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 /* ── Dark mode variant for Tailwind ─────────────────── */
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* ══════════════════════════════════════════════════════
-   CSS Custom Properties — 运行时变量，响应 .dark 类
+   CSS Custom Properties — 运行时变量，响应 data-theme
    ══════════════════════════════════════════════════════ */
 :root {
   /* 品牌色 */
@@ -13,6 +13,8 @@
   --tw-color-success: #0eb478;
   --tw-color-warning: #f5a623;
   --tw-color-error: #e5484d;
+  --tw-color-info: #5e6ad2;
+  --tw-color-link: #5e6ad2;
 
   /* 中性色 */
   --tw-color-bg-layout: #fbfbfc;
@@ -25,15 +27,23 @@
   --tw-color-text: #1a1a2e;
   --tw-color-text-secondary: #6b6b7b;
   --tw-color-text-tertiary: #9b9bae;
+  --tw-color-text-disabled: #c2c2cc;
+
+  --tw-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --tw-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --tw-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --tw-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* 深色主题变量覆写 */
-.dark {
+[data-theme="dark"] {
   --tw-color-primary: #7b7de6;
   --tw-color-primary-hover: #8f91ed;
   --tw-color-success: #2dd4a0;
   --tw-color-warning: #f7b955;
   --tw-color-error: #f87171;
+  --tw-color-info: #7b7de6;
+  --tw-color-link: #7b7de6;
 
   --tw-color-bg-layout: #0d0d12;
   --tw-color-bg-container: #16161d;
@@ -44,19 +54,26 @@
   --tw-color-text: #ededf0;
   --tw-color-text-secondary: #9b9bae;
   --tw-color-text-tertiary: #6b6b7b;
+  --tw-color-text-disabled: #4a4a55;
+
+  --tw-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --tw-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --tw-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --tw-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.36);
 }
 
 /* ══════════════════════════════════════════════════════
    Tailwind v4 @theme — 通过 CSS 变量桥接，实现暗色切换
    ══════════════════════════════════════════════════════ */
 @theme {
-  /* 语义色 — 值来自 CSS 变量，会随 .dark 切换 */
+  /* 语义色 — 值来自 CSS 变量，会随 data-theme 切换 */
   --color-primary: var(--tw-color-primary);
   --color-primary-hover: var(--tw-color-primary-hover);
   --color-success: var(--tw-color-success);
   --color-warning: var(--tw-color-warning);
   --color-error: var(--tw-color-error);
-  --color-info: var(--tw-color-primary);
+  --color-info: var(--tw-color-info);
+  --color-link: var(--tw-color-link);
 
   --color-bg-layout: var(--tw-color-bg-layout);
   --color-bg-container: var(--tw-color-bg-container);
@@ -67,6 +84,7 @@
   --color-text: var(--tw-color-text);
   --color-text-secondary: var(--tw-color-text-secondary);
   --color-text-tertiary: var(--tw-color-text-tertiary);
+  --color-text-disabled: var(--tw-color-text-disabled);
 
   /* 静态 Token — 不随主题变化 */
   --radius-xs: 4px;
@@ -75,10 +93,10 @@
   --radius-lg: 12px;
   --radius-xl: 16px;
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-xs: var(--tw-shadow-xs);
+  --shadow-sm: var(--tw-shadow-sm);
+  --shadow-md: var(--tw-shadow-md);
+  --shadow-lg: var(--tw-shadow-lg);
 
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif;
@@ -115,9 +133,4 @@ body {
 ::selection {
   background: color-mix(in srgb, var(--tw-color-primary) 15%, transparent);
   color: inherit;
-}
-
-/* 深色模式 Tooltip 文字颜色修复：白底白字不可见 */
-.dark .ant-tooltip-container {
-  --ant-tooltip-overlay-color: #1a1a2e;
 }

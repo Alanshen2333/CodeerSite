@@ -5,6 +5,7 @@ import ThemeProvider from "@/providers/ThemeProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import Navbar from "@/components/layout/Navbar";
 import MessageBridge from "@/components/MessageBridge";
+import { themeBootstrapScript } from "@/lib/theme-bootstrap";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,6 +25,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        {/* React hydrate 前解析用户偏好或系统主题，避免页面外壳闪烁。 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: themeBootstrapScript,
+          }}
+        />
+      </head>
       <body className="min-h-screen bg-bg-layout text-text antialiased">
         <AntdRegistry>
           <ThemeProvider>
