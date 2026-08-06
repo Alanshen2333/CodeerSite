@@ -116,6 +116,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* AntD 的服务端浅色样式会早于客户端主题接管；就绪前只展示正确的页面底色。 */
+html:not([data-theme-ready]) body {
+  visibility: hidden;
+  animation: reveal-theme-fallback 0s 1s forwards;
+}
+
+@keyframes reveal-theme-fallback {
+  to { visibility: visible; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

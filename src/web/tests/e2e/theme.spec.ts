@@ -193,3 +193,47 @@ test("窄屏下主题导航不会造成横向溢出", async ({ browser }) => {
 
   await context.close();
 });
+
+test("系统深色首次绘制时 CSS 与 AntD 表面已经一致", async ({ browser }) => {
+  const context = await browser.newContext({ colorScheme: "dark" });
+  const page = await context.newPage();
+  await mockHomeApi(page);
+  await page.addInitScript(() => {
+    const frames: Array<{ body: string; card: string }> = [];
+    Object.assign(window, { __themeFrames: frames });
+    const sample = () => {
+      const card = document.querySelector(".ant-card");
+      if (card && document.documentElement.dataset.themeReady === "true") {
+        frames.push({
+          body: getComputedStyle(document.body).backgroundColor,
+          card: getComputedStyle(card).backgroundColor,
+        });
+      }
+      if (frames.length < 3) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+
+  await page.goto("/");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __themeFrames?: Array<{ body: string; card: string }> })
+            .__themeFrames?.length ?? 0,
+      ),
+    )
+    .toBeGreaterThanOrEqual(1);
+
+  const firstFrame = await page.evaluate(
+    () =>
+      (window as typeof window & { __themeFrames: Array<{ body: string; card: string }> })
+        .__themeFrames[0],
+  );
+  expect(firstFrame).toEqual({
+    body: "rgb(13, 13, 18)",
+    card: "rgb(22, 22, 29)",
+  });
+
+  await context.close();
+});

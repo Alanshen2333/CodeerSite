@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { ConfigProvider } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { createAntdTheme } from "@/styles/antd-theme";
@@ -28,7 +35,7 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const theme = preference ?? system;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const media = window.matchMedia(THEME_MEDIA_QUERY);
     const stored = readThemePreference();
     const initialSystem = systemTheme(media.matches);
@@ -55,8 +62,20 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (mounted) applyTheme(theme);
+  useLayoutEffect(() => {
+    if (mounted) {
+      applyTheme(theme);
+      let revealFrame = 0;
+      const themeFrame = requestAnimationFrame(() => {
+        revealFrame = requestAnimationFrame(() => {
+          document.documentElement.dataset.themeReady = "true";
+        });
+      });
+      return () => {
+        cancelAnimationFrame(themeFrame);
+        cancelAnimationFrame(revealFrame);
+      };
+    }
   }, [mounted, theme]);
 
   const toggleTheme = useCallback(() => {
