@@ -12,7 +12,7 @@ interface RepoCardProps {
 
 export default function RepoCard({ repo, activeTab, onTabChange }: RepoCardProps) {
   return (
-    <Card className="shadow-sm">
+    <Card className="shadow-sm card-lift">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <Typography.Title level={5} className="m-0 text-text">

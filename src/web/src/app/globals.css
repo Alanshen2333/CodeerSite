@@ -33,6 +33,20 @@
   --tw-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
   --tw-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --tw-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  /* 光晕（hero 径向渐变用，带 alpha 的品牌色） */
+  --tw-glow-primary: rgba(94, 106, 210, 0.16);
+  --tw-glow-secondary: rgba(14, 180, 120, 0.08);
+
+  /* 网格线 */
+  --tw-grid-line: rgba(26, 26, 46, 0.05);
+
+  /* 玻璃拟态 */
+  --tw-color-bg-glass: rgba(255, 255, 255, 0.72);
+  --tw-color-border-glass: rgba(255, 255, 255, 0.9);
+
+  /* hover 边框 */
+  --tw-color-border-hover: #d5d5dd;
 }
 
 /* 深色主题变量覆写 */
@@ -60,6 +74,20 @@
   --tw-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24), 0 1px 3px rgba(0, 0, 0, 0.3);
   --tw-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.24);
   --tw-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.36);
+
+  /* 光晕 —— 暗色下更亮更散 */
+  --tw-glow-primary: rgba(123, 125, 230, 0.22);
+  --tw-glow-secondary: rgba(45, 212, 160, 0.1);
+
+  /* 网格线 —— 暗色下更隐 */
+  --tw-grid-line: rgba(237, 237, 240, 0.045);
+
+  /* 玻璃拟态 —— 暗色吸光 */
+  --tw-color-bg-glass: rgba(22, 22, 29, 0.55);
+  --tw-color-border-glass: rgba(255, 255, 255, 0.08);
+
+  /* hover 边框 */
+  --tw-color-border-hover: #3d3d4a;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -86,6 +114,10 @@
   --color-text-tertiary: var(--tw-color-text-tertiary);
   --color-text-disabled: var(--tw-color-text-disabled);
 
+  --color-bg-glass: var(--tw-color-bg-glass);
+  --color-border-glass: var(--tw-color-border-glass);
+  --color-border-hover: var(--tw-color-border-hover);
+
   /* 静态 Token — 不随主题变化 */
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -101,6 +133,87 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   --font-mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+
+  /* 动效 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-enter: enter 0.6s var(--ease-out) both;
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   自定义工具类 —— 光晕 / 网格 / 玻璃 / 渐变文字 / 动效
+   ══════════════════════════════════════════════════════ */
+
+/* hero 光晕 —— 双径向渐变叠层 */
+@utility bg-hero-glow {
+  background:
+    radial-gradient(ellipse 55% 50% at 50% -5%, var(--tw-glow-primary) 0%, transparent 70%),
+    radial-gradient(ellipse 35% 35% at 82% 18%, var(--tw-glow-secondary) 0%, transparent 70%);
+}
+
+/* 淡网格 —— mask 让网格向四周淡出，不刺眼 */
+@utility bg-grid-fade {
+  background-image:
+    linear-gradient(to right, var(--tw-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--tw-grid-line) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 0%, black 35%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 0%, black 35%, transparent 100%);
+}
+
+/* 玻璃拟态卡 */
+@utility glass-card {
+  background: var(--tw-color-bg-glass);
+  backdrop-filter: blur(12px) saturate(1.5);
+  -webkit-backdrop-filter: blur(12px) saturate(1.5);
+  border: 1px solid var(--tw-color-border-glass);
+}
+
+/* 渐变标题文字 —— 从 text 渐变到半透明 text，深浅色自动适配 */
+@utility text-gradient {
+  background: linear-gradient(
+    to bottom,
+    var(--tw-color-text) 25%,
+    color-mix(in srgb, var(--tw-color-text) 55%, transparent) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* primary 淡色底 —— 图标容器等点缀用 */
+@utility bg-primary-soft {
+  background: color-mix(in srgb, var(--tw-color-primary) 12%, transparent);
+  color: var(--tw-color-primary);
+}
+
+/* 卡片 hover 抬升 —— 全站统一模式 */
+@utility card-lift {
+  transition:
+    transform 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out),
+    border-color 200ms var(--ease-out);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--tw-shadow-md);
+    border-color: var(--tw-color-border-hover);
+  }
+}
+
+/* 入场动画 stagger —— enter-delay-N 即 N × 90ms */
+@utility enter-delay-* {
+  animation-delay: calc(--value(number) * 90ms);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -124,6 +237,36 @@ html:not([data-theme-ready]) body {
 
 @keyframes reveal-theme-fallback {
   to { visibility: visible; }
+}
+
+/* 链接颜色过渡统一 */
+a {
+  transition: color 150ms var(--ease-out);
+}
+
+/* antd hoverable 卡片统一覆写（双类名提优先级，压过 cssinjs 注入样式） */
+.ant-card-hoverable.ant-card-hoverable {
+  transition:
+    transform 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out),
+    border-color 200ms var(--ease-out);
+}
+.ant-card-hoverable.ant-card-hoverable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--tw-shadow-md);
+  border-color: var(--tw-color-border-hover);
+}
+
+/* reduced-motion 兜底 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-enter {
+    animation: none;
+  }
+  .card-lift,
+  .ant-card-hoverable,
+  a {
+    transition: none;
+  }
 }
 
 /* Scrollbar */

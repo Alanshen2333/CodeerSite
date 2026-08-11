@@ -29,6 +29,16 @@ export interface SemanticPalette {
   textSecondary: string;
   textTertiary: string;
   textDisabled: string;
+  /** hero 光晕（带 alpha） */
+  glowPrimary: string;
+  glowSecondary: string;
+  /** 淡网格线颜色 */
+  gridLine: string;
+  /** 玻璃拟态背景 / 边框 */
+  bgGlass: string;
+  borderGlass: string;
+  /** 卡片 hover 边框色 */
+  borderHover: string;
 }
 
 // ── 主题语义 Palette ──────────────────────────────────
@@ -50,6 +60,12 @@ export const themePalettes = {
     textSecondary: "#6b6b7b",
     textTertiary: "#9b9bae",
     textDisabled: "#c2c2cc",
+    glowPrimary: "rgba(94, 106, 210, 0.16)",
+    glowSecondary: "rgba(14, 180, 120, 0.08)",
+    gridLine: "rgba(26, 26, 46, 0.05)",
+    bgGlass: "rgba(255, 255, 255, 0.72)",
+    borderGlass: "rgba(255, 255, 255, 0.9)",
+    borderHover: "#d5d5dd",
   },
   dark: {
     primary: "#7b7de6",
@@ -68,6 +84,12 @@ export const themePalettes = {
     textSecondary: "#9b9bae",
     textTertiary: "#6b6b7b",
     textDisabled: "#4a4a55",
+    glowPrimary: "rgba(123, 125, 230, 0.22)",
+    glowSecondary: "rgba(45, 212, 160, 0.1)",
+    gridLine: "rgba(237, 237, 240, 0.045)",
+    bgGlass: "rgba(22, 22, 29, 0.55)",
+    borderGlass: "rgba(255, 255, 255, 0.08)",
+    borderHover: "#3d3d4a",
   },
 } as const satisfies Record<string, SemanticPalette>;
 
