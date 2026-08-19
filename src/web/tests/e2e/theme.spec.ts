@@ -18,6 +18,12 @@ const cssPaletteVariables = {
   textSecondary: "--tw-color-text-secondary",
   textTertiary: "--tw-color-text-tertiary",
   textDisabled: "--tw-color-text-disabled",
+  glowPrimary: "--tw-glow-primary",
+  glowSecondary: "--tw-glow-secondary",
+  gridLine: "--tw-grid-line",
+  bgGlass: "--tw-color-bg-glass",
+  borderGlass: "--tw-color-border-glass",
+  borderHover: "--tw-color-border-hover",
 } as const;
 
 async function mockHomeApi(page: Page) {
@@ -32,6 +38,7 @@ async function mockHomeApi(page: Page) {
 test("首次访问在系统深色下呈现统一的暗色表面", async ({ browser }) => {
   const context = await browser.newContext({ colorScheme: "dark" });
   const page = await context.newPage();
+  await mockHomeApi(page);
 
   await page.goto("/");
 
@@ -39,18 +46,18 @@ test("首次访问在系统深色下呈现统一的暗色表面", async ({ brows
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
   await expect
-    .poll(() => page.locator(".ant-card").first().evaluate((element) => getComputedStyle(element).backgroundColor))
-    .toBe("rgb(22, 22, 29)");
+    .poll(() => page.locator(".glass-card").first().evaluate((element) => getComputedStyle(element).backgroundColor))
+    .toBe("rgba(22, 22, 29, 0.55)");
 
   const colors = await page.evaluate(() => ({
     body: getComputedStyle(document.body).backgroundColor,
-    card: getComputedStyle(document.querySelector(".ant-card")!).backgroundColor,
-    cardText: getComputedStyle(document.querySelector(".ant-card")!).color,
+    card: getComputedStyle(document.querySelector(".glass-card")!).backgroundColor,
+    cardText: getComputedStyle(document.querySelector(".glass-card")!).color,
   }));
 
   expect(colors).toEqual({
     body: "rgb(13, 13, 18)",
-    card: "rgb(22, 22, 29)",
+    card: "rgba(22, 22, 29, 0.55)",
     cardText: "rgb(237, 237, 240)",
   });
 
@@ -60,6 +67,7 @@ test("首次访问在系统深色下呈现统一的暗色表面", async ({ brows
 test("用户切换主题后刷新仍保留选择", async ({ browser }) => {
   const context = await browser.newContext({ colorScheme: "dark" });
   const page = await context.newPage();
+  await mockHomeApi(page);
 
   await page.goto("/");
   await page.getByRole("button", { name: "切换到浅色模式" }).click();
@@ -75,6 +83,7 @@ test("用户切换主题后刷新仍保留选择", async ({ browser }) => {
 test("未设置偏好时跟随系统，手动切换后停止跟随", async ({ browser }) => {
   const context = await browser.newContext({ colorScheme: "light" });
   const page = await context.newPage();
+  await mockHomeApi(page);
 
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -94,6 +103,8 @@ test("同一浏览器的标签页同步用户主题选择", async ({ browser }) 
   const context = await browser.newContext({ colorScheme: "light" });
   const firstPage = await context.newPage();
   const secondPage = await context.newPage();
+  await mockHomeApi(firstPage);
+  await mockHomeApi(secondPage);
 
   await Promise.all([firstPage.goto("/"), secondPage.goto("/")]);
   await firstPage.getByRole("button", { name: "切换到深色模式" }).click();
@@ -108,6 +119,7 @@ for (const theme of ["light", "dark"] satisfies Theme[]) {
   test(`${theme} 的 CSS 变量与 TypeScript Palette 一致`, async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
+    await mockHomeApi(page);
     await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
     await page.goto("/");
 
@@ -202,7 +214,7 @@ test("系统深色首次绘制时 CSS 与 AntD 表面已经一致", async ({ bro
     const frames: Array<{ body: string; card: string }> = [];
     Object.assign(window, { __themeFrames: frames });
     const sample = () => {
-      const card = document.querySelector(".ant-card");
+      const card = document.querySelector(".glass-card");
       if (card && document.documentElement.dataset.themeReady === "true") {
         frames.push({
           body: getComputedStyle(document.body).backgroundColor,
@@ -232,7 +244,7 @@ test("系统深色首次绘制时 CSS 与 AntD 表面已经一致", async ({ bro
   );
   expect(firstFrame).toEqual({
     body: "rgb(13, 13, 18)",
-    card: "rgb(22, 22, 29)",
+    card: "rgba(22, 22, 29, 0.55)",
   });
 
   await context.close();
