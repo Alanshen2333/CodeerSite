@@ -22,6 +22,7 @@ test-results/
 # Environment
 .env
 .env.local
+.env.production
 .envrc
 
 # OS

@@ -23,7 +23,9 @@ class GiteaOAuthService:
             "GITEA_OAUTH_REDIRECT_URI", "http://localhost:3000/oauth/gitea"
         )
         state = GiteaOAuthService._generate_state(intent, user_id)
-        base_url = current_app.config.get("GITEA_URL", "").rstrip("/")
+        base_url = current_app.config.get(
+            "GITEA_PUBLIC_URL", current_app.config.get("GITEA_URL", "")
+        ).rstrip("/")
         params = {
             "client_id": client_id,
             "redirect_uri": redirect_uri,

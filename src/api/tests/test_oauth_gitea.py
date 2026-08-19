@@ -23,6 +23,19 @@ class TestOAuthAuthorize:
         assert "state=" in url
         assert "scope=read%3Auser+read%3Arepository+write%3Arepository" in url
 
+    def test_authorize_uses_public_gitea_url(self, client, app):
+        with app.app_context():
+            app.config["GITEA_URL"] = "http://gitea:3000"
+            app.config["GITEA_PUBLIC_URL"] = "http://example.test:28080/gitea"
+            app.config["GITEA_OAUTH_CLIENT_ID"] = "test-client-id"
+
+        resp = client.get("/api/auth/oauth/gitea/authorize?intent=login")
+
+        assert resp.status_code == 200
+        assert resp.get_json()["authorization_url"].startswith(
+            "http://example.test:28080/gitea/login/oauth/authorize?"
+        )
+
     def test_authorize_bind_requires_auth(self, client, app):
         with app.app_context():
             app.config["GITEA_URL"] = "http://localhost:23000"

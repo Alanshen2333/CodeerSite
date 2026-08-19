@@ -1,0 +1,118 @@
+name: codeersite
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: codeersite
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      POSTGRES_DB: codeersite
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro,Z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codeersite -d codeersite"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    mem_limit: 320m
+    security_opt: ["no-new-privileges:true"]
+
+  gitea:
+    image: gitea/gitea:1.22
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: gitea
+      GITEA__database__USER: codeersite
+      GITEA__database__PASSWD: ${POSTGRES_PASSWORD}
+      GITEA__server__DOMAIN: ${PUBLIC_HOST}
+      GITEA__server__ROOT_URL: http://${PUBLIC_HOST}:${PUBLIC_PORT}/gitea/
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__server__DISABLE_SSH: "true"
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__security__SECRET_KEY: ${GITEA_SECRET_KEY}
+      GITEA__security__INTERNAL_TOKEN: ${GITEA_INTERNAL_TOKEN}
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__server__OFFLINE_MODE: "true"
+      GITEA__session__COOKIE_SECURE: "false"
+    volumes:
+      - giteadata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/api/v1/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    restart: unless-stopped
+    mem_limit: 384m
+    security_opt: ["no-new-privileges:true"]
+
+  api:
+    image: codeersite-api:deploy
+    depends_on:
+      postgres:
+        condition: service_healthy
+      gitea:
+        condition: service_healthy
+    environment:
+      FLASK_ENV: production
+      SECRET_KEY: ${SECRET_KEY:?required}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?required}
+      DATABASE_URL: postgresql+psycopg://codeersite:${POSTGRES_PASSWORD}@postgres:5432/codeersite
+      GITEA_URL: http://gitea:3000
+      GITEA_PUBLIC_URL: http://${PUBLIC_HOST}:${PUBLIC_PORT}/gitea
+      GITEA_ADMIN_USER: ${GITEA_ADMIN_USER}
+      GITEA_ADMIN_PASS: ${GITEA_ADMIN_PASS}
+      GITEA_ADMIN_TOKEN: ${GITEA_ADMIN_TOKEN:-}
+      GITEA_ORG: ${GITEA_ORG:-codeersite}
+      GITEA_PUBLIC_READONLY_TOKEN: ${GITEA_PUBLIC_READONLY_TOKEN:-}
+      GITEA_TOKEN_ENCRYPTION_KEY: ${GITEA_TOKEN_ENCRYPTION_KEY:?required}
+      GITEA_OAUTH_CLIENT_ID: ${GITEA_OAUTH_CLIENT_ID:-}
+      GITEA_OAUTH_CLIENT_SECRET: ${GITEA_OAUTH_CLIENT_SECRET:-}
+      GITEA_OAUTH_REDIRECT_URI: http://${PUBLIC_HOST}:${PUBLIC_PORT}/oauth/gitea
+      CORS_ORIGINS: http://${PUBLIC_HOST}:${PUBLIC_PORT}
+      MAIL_DRIVER: ${MAIL_DRIVER:-console}
+      MAIL_DEFAULT_SENDER: ${MAIL_DEFAULT_SENDER:-noreply@codeer.site}
+    # Mongo 停用后的临时兼容：单 worker 确保邮箱验证码内存回退的一致性。
+    command: ["sh", "-c", "alembic upgrade head && exec gunicorn --bind 0.0.0.0:8000 --workers 1 --threads 4 --timeout 60 --no-control-socket --access-logfile - --error-logfile - src.api.wsgi:app"]
+    restart: unless-stopped
+    mem_limit: 320m
+    read_only: true
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    security_opt: ["no-new-privileges:true"]
+
+  web:
+    image: codeersite-web:deploy
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    depends_on: [api]
+    restart: unless-stopped
+    mem_limit: 384m
+    read_only: true
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    security_opt: ["no-new-privileges:true"]
+
+  nginx:
+    image: nginxinc/nginx-unprivileged:1.27-alpine
+    depends_on: [web, api, gitea]
+    ports:
+      - "${PUBLIC_PORT}:8080"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro,Z
+    restart: unless-stopped
+    mem_limit: 64m
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,uid=101,gid=101,mode=755
+      - /var/cache/nginx:size=16m,uid=101,gid=101,mode=755
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+volumes:
+  pgdata:
+  giteadata:

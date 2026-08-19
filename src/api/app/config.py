@@ -20,6 +20,8 @@ class Config:
 
     # Gitea (VCS backend)
     GITEA_URL = os.getenv("GITEA_URL", "")
+    # 浏览器可访问的 Gitea 地址；容器部署时与内部 GITEA_URL 分离。
+    GITEA_PUBLIC_URL = os.getenv("GITEA_PUBLIC_URL", GITEA_URL)
     GITEA_ADMIN_TOKEN = os.getenv("GITEA_ADMIN_TOKEN", "")
     GITEA_ADMIN_USER = os.getenv("GITEA_ADMIN_USER", "")
     GITEA_ADMIN_PASS = os.getenv("GITEA_ADMIN_PASS", "")
@@ -84,6 +86,7 @@ class TestConfig(Config):
     MONGO_SERVER_SELECTION_TIMEOUT_MS = 100
     # 测试环境关闭 Gitea 桥接，但保留合法 Fernet key 以便测试加解密
     GITEA_URL = ""
+    GITEA_PUBLIC_URL = ""
     GITEA_ADMIN_TOKEN = ""
     GITEA_ADMIN_USER = ""
     GITEA_ADMIN_PASS = ""
