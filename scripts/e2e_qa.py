@@ -1,6 +1,6 @@
 """端到端 Q&A 流程测试：发帖 → 回帖 → 点赞 → 采纳 → 收藏。
 
-直连 Docker compose 起的 PG + Mongo，用 Flask test client 驱动完整 API 流程。
+直连 Docker compose 起的 PostgreSQL，用 Flask test client 驱动完整 API 流程。
 用法：.venv/bin/python scripts/e2e_qa.py
 """
 

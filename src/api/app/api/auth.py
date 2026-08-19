@@ -3,6 +3,8 @@ from flask import Blueprint, current_app, request, jsonify
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
+    decode_token,
+    get_jwt,
     jwt_required,
     get_current_user,
     verify_jwt_in_request,
@@ -18,6 +20,7 @@ from app.schemas.auth import (
     RequestEmailCodeSchema,
     OAuthAuthorizeSchema,
     OAuthCallbackSchema,
+    LogoutSchema,
 )
 from app.schemas.ssh_key import CreateSshKeySchema, SshKeySchema
 from app.services.auth_service import AuthService
@@ -26,6 +29,7 @@ from app.services.user_service import UserService
 from app.services.ssh_key_service import SshKeyService
 from app.services.gitea_client import GiteaClient
 from app.services.gitea_oauth_service import GiteaOAuthService
+from app.services.jwt_blocklist_service import JWTBlocklistService
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -109,6 +113,55 @@ def refresh():
         return error
     access_token = create_access_token(identity=user.id)
     return jsonify(access_token=access_token), 200
+
+
+@auth_bp.route("/logout", methods=["POST"])
+@jwt_required()
+def logout():
+    """退出登录：吊销当前 access token；可选传入 refresh_token 一并吊销。"""
+    user, error = _get_user_or_401()
+    if error:
+        return error
+
+    try:
+        data = LogoutSchema().load(request.get_json(silent=True) or {})
+    except ValidationError as e:
+        return jsonify(error="Validation Error", messages=e.messages), 422
+
+    jwt_data = get_jwt()
+    access_jti = jwt_data.get("jti")
+    if not access_jti:
+        return jsonify(error="Bad Request", message="Missing jti in token."), 400
+
+    exp = jwt_data.get("exp")
+    access_expires_at = (
+        datetime.fromtimestamp(exp, tz=timezone.utc) if exp else None
+    )
+    if not JWTBlocklistService.revoke(
+        access_jti, user.id, "access", access_expires_at
+    ):
+        return jsonify(error="Internal Server Error", message="无法吊销访问令牌。"), 500
+
+    refresh_token = data.get("refresh_token")
+    if refresh_token:
+        try:
+            refresh_claims = decode_token(refresh_token)
+        except Exception:
+            return jsonify(error="Bad Request", message="Invalid refresh token."), 400
+        if refresh_claims.get("type") != "refresh":
+            return jsonify(error="Bad Request", message="Invalid refresh token."), 400
+
+        refresh_jti = refresh_claims.get("jti")
+        refresh_exp = refresh_claims.get("exp")
+        refresh_expires_at = (
+            datetime.fromtimestamp(refresh_exp, tz=timezone.utc) if refresh_exp else None
+        )
+        if not JWTBlocklistService.revoke(
+            refresh_jti, user.id, "refresh", refresh_expires_at
+        ):
+            return jsonify(error="Internal Server Error", message="无法吊销刷新令牌。"), 500
+
+    return jsonify(message="已退出登录。"), 200
 
 
 @auth_bp.route("/me", methods=["GET"])

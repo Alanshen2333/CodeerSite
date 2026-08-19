@@ -25,7 +25,7 @@ Codeersite 已具备项目管理能力（Project / Issue / Milestone / 看板 / 
 
 ### 部署
 
-`docker/docker-compose.dev.yml` 增加 `gitea` service，与 `postgres` / `mongo` 并列。Gitea 连接同一个 PostgreSQL 实例的 `gitea` database。Gitea Web 端口仅对内部 / 调试暴露，不对终端用户发布。
+`docker/docker-compose.dev.yml` 增加 `gitea` service，与 `postgres` 并列。Gitea 连接同一个 PostgreSQL 实例的 `gitea` database。Gitea Web 端口仅对内部 / 调试暴露，不对终端用户发布。
 
 ### 认证与 token 流转
 

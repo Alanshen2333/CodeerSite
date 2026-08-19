@@ -17,7 +17,7 @@
 scripts/dev.sh
 ```
 
-拉起 PostgreSQL + MongoDB、跑迁移、启动 Flask + Next.js。
+拉起 PostgreSQL + Gitea、跑迁移、启动 Flask + Next.js。
 
 ### 分步启动
 

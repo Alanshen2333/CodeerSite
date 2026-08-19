@@ -4,7 +4,8 @@ from datetime import datetime, timezone, timedelta
 
 import pytest
 
-from app.services.email_code_service import EmailCodeService
+from app.extensions import db
+from app.models.email_verification_code import EmailVerificationCode
 
 
 @pytest.mark.usefixtures("auth_headers")
@@ -39,7 +40,7 @@ class TestEmailCodeCooldown:
         )
         assert resp.status_code == 429
 
-    def test_cooldown_expiry_allows_resend(self, client, auth_headers):
+    def test_cooldown_expiry_allows_resend(self, client, auth_headers, app):
         """冷却期过后可重发。"""
         client.post(
             "/api/auth/email-code",
@@ -50,10 +51,12 @@ class TestEmailCodeCooldown:
         )
 
         # Manually advance sent_at past cooldown
-        key = EmailCodeService._key("test@example.com", "change_password")
-        record = EmailCodeService._memory_store.get(key)
-        assert record is not None
-        record["sent_at"] = datetime.now(timezone.utc) - timedelta(seconds=61)
+        with app.app_context():
+            record = EmailVerificationCode.query.filter_by(
+                email="test@example.com", purpose="change_password"
+            ).one()
+            record.sent_at = datetime.now(timezone.utc) - timedelta(seconds=61)
+            db.session.commit()
 
         resp = client.post(
             "/api/auth/email-code",

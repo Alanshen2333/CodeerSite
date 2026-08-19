@@ -28,6 +28,7 @@ class TestOAuthAuthorize:
             app.config["GITEA_URL"] = "http://gitea:3000"
             app.config["GITEA_PUBLIC_URL"] = "http://example.test:28080/gitea"
             app.config["GITEA_OAUTH_CLIENT_ID"] = "test-client-id"
+            app.config["GITEA_OAUTH_CLIENT_SECRET"] = "test-client-secret"
 
         resp = client.get("/api/auth/oauth/gitea/authorize?intent=login")
 

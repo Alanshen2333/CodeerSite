@@ -14,9 +14,9 @@ echo -e "${BLUE}   Codeersite 开发环境${NC}"
 echo -e "${BLUE}========================================${NC}"
 
 # 1. Docker
-echo -e "\n${YELLOW}[1/3] Docker 服务（PostgreSQL + MongoDB + Gitea）...${NC}"
+echo -e "\n${YELLOW}[1/3] Docker 服务（PostgreSQL + Gitea）...${NC}"
 docker compose -f "$ROOT/docker/docker-compose.dev.yml" up -d
-echo -e "${GREEN}  ✓ PostgreSQL + MongoDB + Gitea 已就绪${NC}"
+echo -e "${GREEN}  ✓ PostgreSQL + Gitea 已就绪${NC}"
 sleep 2
 
 # 2. DB Migration

@@ -39,6 +39,7 @@ def api_docs():
                 "post": {"tags": ["Auth"], "summary": "登录", "security": []}
             },
             "/auth/refresh": {"post": {"tags": ["Auth"], "summary": "刷新 Token"}},
+            "/auth/logout": {"post": {"tags": ["Auth"], "summary": "退出登录（吊销 JWT）"}},
             "/auth/me": {
                 "get": {"tags": ["Auth"], "summary": "获取当前用户"},
                 "patch": {"tags": ["Auth"], "summary": "更新个人资料"},

@@ -15,6 +15,9 @@ from app.models.kanban_card import KanbanCard
 from app.models.badge import Badge, UserBadge
 from app.models.user_ssh_key import UserSshKey
 from app.models.search_document import SearchDocument
+from app.models.email_verification_code import EmailVerificationCode
+from app.models.notification import Notification
+from app.models.jwt_blocklist import JWTBlocklist
 
 __all__ = [
     "User",
@@ -36,4 +39,7 @@ __all__ = [
     "UserBadge",
     "UserSshKey",
     "SearchDocument",
+    "EmailVerificationCode",
+    "Notification",
+    "JWTBlocklist",
 ]

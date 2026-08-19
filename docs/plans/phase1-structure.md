@@ -9,7 +9,7 @@
 
 ## 设计原则
 
-1. **优雅降级**——GiteaClient 参照 `src/api/app/extensions.py` 的 mongo 模式：`_is_available()` 检查配置+连通性，Gitea 挂了不阻断 Codeersite 核心（Q&A/项目/Issue 照常工作），只记 warning。
+1. **优雅降级**——GiteaClient 通过 `_is_available()` 检查配置+连通性，Gitea 挂了不阻断 Codeersite 核心（Q&A/项目/Issue 照常工作），只记 warning。
 2. **token 不出后端**——用户 Gitea token 用 Fernet 加密存 `User.gitea_token_encrypted`，永不返回前端；前端永远走 Codeersite BFF。
 3. **Project:Repo = 1:1 可选关联**——Project 可无 repo；有则 `gitea_full_name` 如 `codeersite/my-repo`。
 4. **仓库归 `codeersite` org**——org 全局唯一，所有 repo 在 org 下。

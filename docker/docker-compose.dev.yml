@@ -19,21 +19,6 @@ services:
       timeout: 3s
       retries: 5
 
-  mongo:
-    image: mongo:7
-    container_name: codeersite-mongo
-    environment:
-      MONGO_INITDB_DATABASE: codeersite
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodata:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   gitea:
     image: gitea/gitea:1.22
     container_name: codeersite-gitea
@@ -72,5 +57,4 @@ services:
 
 volumes:
   pgdata:
-  mongodata:
   giteadata:

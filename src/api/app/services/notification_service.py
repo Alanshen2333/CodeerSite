@@ -1,40 +1,23 @@
-import uuid
 import logging
-from datetime import datetime, timezone
-from pymongo.errors import PyMongoError
-from app.extensions import get_mongo_db
+from datetime import datetime, timezone, timedelta
+
+from sqlalchemy import delete, update
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.extensions import db
+from app.models.notification import Notification
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationService:
-    """MongoDB-backed notification system with TTL auto-cleanup."""
+    """PostgreSQL-backed notification system.
 
-    COLLECTION = "notifications"
+    响应结构与早期 MongoDB 实现保持兼容；过期通知通过 delete_expired()
+    按 90 天策略清理（可由 scripts/purge_notifications.py 定时调用）。
+    """
+
     TTL_SECONDS = 90 * 24 * 3600
-    _mongo_available: bool | None = None
-
-    @classmethod
-    def _is_available(cls) -> bool:
-        if cls._mongo_available is not None:
-            return cls._mongo_available
-        db = get_mongo_db()
-        if db is None:
-            cls._mongo_available = False
-            return False
-        try:
-            db.command("ping")
-            cls._mongo_available = True
-        except PyMongoError:
-            cls._mongo_available = False
-            logger.warning("MongoDB unavailable, notifications disabled.")
-        return cls._mongo_available
-
-    @classmethod
-    def _collection(cls):
-        if not cls._is_available():
-            return None
-        return get_mongo_db()[cls.COLLECTION]
 
     @classmethod
     def create(
@@ -48,106 +31,88 @@ class NotificationService:
         source_id: str | None = None,
     ) -> dict:
         try:
-            col = cls._collection()
-            if col is None:
-                return {}
-            now = datetime.now(timezone.utc)
-            doc = {
-                "_id": str(uuid.uuid4()),
-                "recipient_id": recipient_id,
-                "type": type_,
-                "title": title,
-                "body": body,
-                "link": link,
-                "source_type": source_type,
-                "source_id": source_id,
-                "is_read": False,
-                "created_at": now,
-            }
-            col.insert_one(doc)
-            doc.pop("_id", None)
-            return cls._format(doc)
-        except PyMongoError:
+            notification = Notification(
+                recipient_id=recipient_id,
+                type=type_,
+                title=title,
+                body=body,
+                link=link,
+                source_type=source_type,
+                source_id=source_id,
+            )
+            db.session.add(notification)
+            db.session.commit()
+            return notification.to_dict()
+        except SQLAlchemyError:
+            db.session.rollback()
+            logger.warning("Failed to create notification for user %s", recipient_id, exc_info=True)
             return {}
 
     @classmethod
     def list_for_user(
         cls, user_id: str, unread_only: bool = False, page: int = 1, per_page: int = 20
     ) -> dict:
-        empty = {"items": [], "total": 0, "page": page, "pages": 0}
-        try:
-            col = cls._collection()
-            if col is None:
-                return empty
-            query_filter = {"recipient_id": user_id}
-            if unread_only:
-                query_filter["is_read"] = False
-            total = col.count_documents(query_filter)
-            skip = (page - 1) * per_page
-            docs = (
-                col.find(query_filter).sort("created_at", -1).skip(skip).limit(per_page)
-            )
-            pages = (total + per_page - 1) // per_page
-            return {
-                "items": [cls._format(d) for d in docs],
-                "total": total,
-                "page": page,
-                "pages": pages,
-            }
-        except PyMongoError:
-            return empty
+        page = max(page, 1)
+        per_page = min(max(per_page, 1), 50)
+        query = Notification.query.filter_by(recipient_id=user_id)
+        if unread_only:
+            query = query.filter_by(is_read=False)
+        total = query.count()
+        pages = (total + per_page - 1) // per_page if per_page else 0
+        items = (
+            query.order_by(Notification.created_at.desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
+        return {
+            "items": [item.to_dict() for item in items],
+            "total": total,
+            "page": page,
+            "pages": pages,
+        }
 
     @classmethod
     def mark_read(cls, notification_id: str, user_id: str) -> bool:
-        try:
-            col = cls._collection()
-            if col is None:
-                return False
-            result = col.update_one(
-                {"_id": notification_id, "recipient_id": user_id},
-                {"$set": {"is_read": True}},
+        stmt = (
+            update(Notification)
+            .where(
+                Notification.id == notification_id,
+                Notification.recipient_id == user_id,
+                Notification.is_read.is_(False),
             )
-            return result.modified_count > 0
-        except PyMongoError:
-            return False
+            .values(is_read=True)
+        )
+        result = db.session.execute(stmt)
+        db.session.commit()
+        return result.rowcount > 0
 
     @classmethod
     def mark_all_read(cls, user_id: str) -> int:
-        try:
-            col = cls._collection()
-            if col is None:
-                return 0
-            result = col.update_many(
-                {"recipient_id": user_id, "is_read": False},
-                {"$set": {"is_read": True}},
+        stmt = (
+            update(Notification)
+            .where(
+                Notification.recipient_id == user_id,
+                Notification.is_read.is_(False),
             )
-            return result.modified_count
-        except PyMongoError:
-            return 0
+            .values(is_read=True)
+        )
+        result = db.session.execute(stmt)
+        db.session.commit()
+        return result.rowcount
 
     @classmethod
     def unread_count(cls, user_id: str) -> int:
-        try:
-            col = cls._collection()
-            if col is None:
-                return 0
-            return col.count_documents({"recipient_id": user_id, "is_read": False})
-        except PyMongoError:
-            return 0
+        return (
+            Notification.query.filter_by(recipient_id=user_id, is_read=False).count()
+        )
 
     @classmethod
-    def _format(cls, doc: dict) -> dict:
-        return {
-            "id": doc.get("_id", doc.get("id", "")),
-            "recipient_id": doc.get("recipient_id"),
-            "type": doc.get("type"),
-            "title": doc.get("title"),
-            "body": doc.get("body"),
-            "link": doc.get("link"),
-            "source_type": doc.get("source_type"),
-            "source_id": doc.get("source_id"),
-            "is_read": doc.get("is_read", False),
-            "created_at": doc["created_at"].isoformat()
-            if doc.get("created_at")
-            else None,
-        }
+    def delete_expired(cls, ttl_seconds: int | None = None) -> int:
+        """删除超过保留期的通知，返回删除条数。"""
+        ttl_seconds = ttl_seconds or cls.TTL_SECONDS
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=ttl_seconds)
+        stmt = delete(Notification).where(Notification.created_at < cutoff)
+        result = db.session.execute(stmt)
+        db.session.commit()
+        return result.rowcount

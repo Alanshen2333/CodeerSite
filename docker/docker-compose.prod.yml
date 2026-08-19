@@ -78,7 +78,6 @@ services:
       CORS_ORIGINS: http://${PUBLIC_HOST}:${PUBLIC_PORT}
       MAIL_DRIVER: ${MAIL_DRIVER:-console}
       MAIL_DEFAULT_SENDER: ${MAIL_DEFAULT_SENDER:-noreply@codeer.site}
-    # Mongo 停用后的临时兼容：单 worker 确保邮箱验证码内存回退的一致性。
     command: ["sh", "-c", "alembic upgrade head && exec gunicorn --bind 0.0.0.0:8000 --workers 1 --threads 4 --timeout 60 --no-control-socket --access-logfile - --error-logfile - src.api.wsgi:app"]
     restart: unless-stopped
     mem_limit: 320m

@@ -75,10 +75,7 @@ class TestAvatarUpload:
 class TestChangePassword:
     def test_change_password_success(self, client, auth_headers):
         # 先请求验证码
-        EmailCodeService.send_code("test@example.com", "change_password")
-        code = EmailCodeService._memory_store[
-            EmailCodeService._key("test@example.com", "change_password")
-        ]["code"]
+        code = EmailCodeService.send_code("test@example.com", "change_password")
 
         resp = client.post(
             "/api/auth/change-password",

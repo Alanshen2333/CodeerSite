@@ -10,7 +10,6 @@ class Config:
         "postgresql+psycopg://codeersite:codeersite_dev@localhost:5432/codeersite",
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/codeersite")
     JWT_SECRET_KEY = os.getenv(
         "JWT_SECRET_KEY", "jwt-dev-secret-key-change-me-to-32-bytes-min"
     )
@@ -82,8 +81,6 @@ class TestConfig(Config):
         "max_overflow": 30,
         "pool_pre_ping": True,
     }
-    MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/codeersite_test")
-    MONGO_SERVER_SELECTION_TIMEOUT_MS = 100
     # 测试环境关闭 Gitea 桥接，但保留合法 Fernet key 以便测试加解密
     GITEA_URL = ""
     GITEA_PUBLIC_URL = ""

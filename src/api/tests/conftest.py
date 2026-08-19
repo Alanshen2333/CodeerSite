@@ -5,7 +5,6 @@ from sqlalchemy import create_engine, text
 
 from app import create_app
 from app.extensions import db
-from app.services.email_code_service import EmailCodeService
 
 
 def _ensure_test_database(uri: str) -> None:
@@ -55,14 +54,6 @@ def app():
 def client(app):
     """A test client for the app."""
     return app.test_client()
-
-
-@pytest.fixture(autouse=True)
-def _clear_email_code_store():
-    """每个测试前清空邮箱验证码内存存储，防止冷却期跨测试泄漏。"""
-    EmailCodeService._memory_store.clear()
-    yield
-    EmailCodeService._memory_store.clear()
 
 
 @pytest.fixture

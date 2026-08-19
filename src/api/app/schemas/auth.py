@@ -57,6 +57,10 @@ class OAuthCallbackSchema(Schema):
     state = fields.Str(required=True)
 
 
+class LogoutSchema(Schema):
+    refresh_token = fields.Str(load_default=None)
+
+
 class AdminUserUpdateSchema(Schema):
     """Admin 更新用户时的字段白名单校验。"""
 

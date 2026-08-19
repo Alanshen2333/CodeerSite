@@ -8,7 +8,7 @@ Codeersite 融合 StackOverflow 式问答与 GitLab 式项目管理，面向开�
 
 - 后端：Flask 3 REST API（`src/api/`）
 - 前端：Next.js 16 + React 19 + Ant Design 6 + Tailwind CSS v4（`src/web/`）
-- 数据库：PostgreSQL 16（主存储，含全文搜索 search_documents）、MongoDB 7（通知/JWT 吊销）
+- 数据库：PostgreSQL 16（唯一主存储：业务数据、全文搜索 search_documents、通知、邮箱验证码、JWT 吊销）
 - 包管理：uv（Python）、pnpm（Node）
 
 ## 技术栈版本（以 lockfile 为准）
@@ -26,12 +26,11 @@ Codeersite 融合 StackOverflow 式问答与 GitLab 式项目管理，面向开�
 | 样式 | Tailwind CSS | v4（@tailwindcss/postcss） |
 | 表单 | react-hook-form + zod | — |
 | 主库 | PostgreSQL | 16 |
-| 辅助库 | MongoDB | 7 |
 
 ## 常用命令
 
 ```bash
-# 一键启动（推荐）：拉起 PG+Mongo、跑迁移、起 Flask+Next
+# 一键启动（推荐）：拉起 PG+Gitea、跑迁移、起 Flask+Next
 scripts/dev.sh
 
 # 数据库
@@ -61,7 +60,7 @@ uv run pytest
 - **模型**：`src/api/app/models/`，SQLAlchemy ORM，UUID 字符串主键，时区感知时间。
 - **序列化**：`src/api/app/schemas/`，Marshmallow。
 - **工具**：`utils/decorators.py`（`admin_required` / `moderator_required`）、`utils/errors.py`（全局错误处理，统一返回 `{"error","message"}` + 状态码）。
-- **扩展**：`extensions.py` 初始化 db / jwt / cors / bcrypt / mongo。
+- **扩展**：`extensions.py` 初始化 db / jwt / cors / bcrypt。
 - **配置**：`config.py`，development / production / test；production 强制校验 `SECRET_KEY` / `JWT_SECRET_KEY` 不得为默认值。
 - **迁移**：Alembic，`alembic.ini`（`script_location=src/api/migrations`，`prepend_sys_path=src/api`）；`migrations/env.py` 创建 app 以读取 Flask 配置并覆盖 `sqlalchemy.url`。
 
@@ -69,14 +68,15 @@ uv run pytest
 
 - JWT via flask-jwt-extended；access 1h，refresh 30d。
 - `user_lookup_loader` 从 `sub`（user id 字符串）加载 User。
-- token 吊销（blocklist）存于 MongoDB；Mongo 不可用时 blocklist 检查返回 False（即不可吊销，降级）。
+- token 吊销（blocklist）存于 PostgreSQL `jwt_blocklist` 表；`POST /api/auth/logout` 写入吊销记录，`token_in_blocklist_loader` 查询该表，查询异常时 fail-closed（视为已吊销）。
 - 角色：user / moderator / admin。
 
-### MongoDB 优雅降级
+### PostgreSQL 单一主存储
 
-- `init_extensions` 懒连接并 ping；失败则 `mongo_db=None` 且不阻断启动。
-- NotificationService 有 `_is_available()`，Mongo 不可用时返回空结果而非报错。
-- 搜索已迁 PostgreSQL（`search_documents` 表，tsvector + pg_trgm），索引写入与业务数据同事务，不依赖 Mongo；存量数据用 `scripts/reindex_search.py` 回填。
+- 通知存 `notifications` 表；列表 / 未读计数 / 标记已读 / 90 天清理由 `NotificationService` 提供，`scripts/purge_notifications.py` 可定时清理过期通知。
+- 邮箱验证码存 `email_verification_codes` 表；`email+purpose` 唯一，消费通过原子 UPDATE 保证一次性。
+- JWT 吊销存 `jwt_blocklist` 表，`jti` 为主键。
+- 搜索使用 `search_documents` 表（tsvector + pg_trgm），索引写入与业务数据同事务；存量数据用 `scripts/reindex_search.py` 回填。
 
 ### 数据模型约定
 
@@ -114,7 +114,7 @@ uv run pytest
 
 | 模块 | 前缀 | 主要端点 |
 |---|---|---|
-| 认证 | /api/auth | register, login, refresh, me(GET/PATCH) |
+| 认证 | /api/auth | register, login, refresh, logout, me(GET/PATCH) |
 | 用户 | /api/users | 列表, /<username>, /<username>/{questions,answers} |
 | 标签 | /api/tags | 列表, /<slug>, 创建 |
 | 问答 | /api/questions | CRUD, close/reopen, pin |
@@ -165,7 +165,7 @@ uv run pytest
 - 本地运行测试前需先启动 PostgreSQL：`docker compose -f docker/docker-compose.dev.yml up -d postgres`。
 - 可通过环境变量 `DATABASE_URL` 覆盖测试数据库地址。
 - 集成测试为主：通过 test client 打真实 HTTP，用 `_login` / `_create_project` 等辅助函数构造前置数据，断言响应状态码与 JSON；相关用例聚合为 `class TestXxx:`。
-- 不连真实 PG / Mongo；外部依赖（如 Gitea）用 mock，勿打真实服务。
+- 测试库为本地 PostgreSQL `codeersite_test`；外部依赖（如 Gitea）用 mock，勿打真实服务。
 - 运行：`uv run pytest`。
 
 ## 环境变量
