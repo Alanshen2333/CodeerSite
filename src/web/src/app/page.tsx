@@ -130,7 +130,7 @@ export default function Home() {
           {STATS_META.map((meta, i) => (
             <div
               key={meta.key}
-              className={`glass-card rounded-lg p-5 card-lift animate-enter ${ENTER_DELAYS[i + 1]}`}
+              className={`glass-card rounded-lg p-5 text-text card-lift animate-enter ${ENTER_DELAYS[i + 1]}`}
             >
               <div className="flex items-center gap-2 text-text-tertiary text-sm">
                 <span className="text-primary text-base">{meta.icon}</span>

@@ -107,6 +107,7 @@ test("同一浏览器的标签页同步用户主题选择", async ({ browser }) 
   await mockHomeApi(secondPage);
 
   await Promise.all([firstPage.goto("/"), secondPage.goto("/")]);
+  await expect(secondPage.locator("html")).toHaveAttribute("data-theme-ready", "true");
   await firstPage.getByRole("button", { name: "切换到深色模式" }).click();
 
   await expect(secondPage.locator("html")).toHaveAttribute("data-theme", "dark");
