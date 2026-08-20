@@ -7,7 +7,6 @@ import { message } from "@/lib/message";
 import { useAuth } from "@/providers/AuthProvider";
 import { createQuestion } from "@/lib/api/questions";
 import TagSelect from "@/components/qa/TagSelect";
-import MarkdownRenderer from "@/components/qa/MarkdownRenderer";
 import PageContainer from "@/components/layout/PageContainer";
 
 const { TextArea } = Input;
@@ -46,7 +45,7 @@ function clearDraft() {
 }
 
 export default function AskQuestionPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -54,14 +53,15 @@ export default function AskQuestionPage() {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
 
-  if (!user) {
-    router.push("/login");
-    return null;
-  }
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [authLoading, router, user]);
 
   // 加载草稿（仅一次）
   useEffect(() => {
-    if (draftLoaded) return;
+    if (authLoading || !user || draftLoaded) return;
     const draft = loadDraft();
     if (draft) {
       form.setFieldsValue({
@@ -75,7 +75,7 @@ export default function AskQuestionPage() {
       }
     }
     setDraftLoaded(true);
-  }, [form, draftLoaded]);
+  }, [authLoading, form, draftLoaded, user]);
 
   // 自动保存草稿（防抖 1s）
   const autoSave = useCallback(() => {
@@ -88,10 +88,10 @@ export default function AskQuestionPage() {
   }, [form]);
 
   useEffect(() => {
-    if (!draftLoaded) return;
+    if (authLoading || !user || !draftLoaded) return;
     const timer = setInterval(autoSave, 1000);
     return () => clearInterval(timer);
-  }, [autoSave, draftLoaded]);
+  }, [authLoading, autoSave, draftLoaded, user]);
 
   const onFinish = async (values: {
     title: string;
@@ -131,6 +131,8 @@ export default function AskQuestionPage() {
     form.resetFields();
     message.success("草稿已清除");
   };
+
+  if (authLoading || !user) return null;
 
   return (
     <PageContainer>
