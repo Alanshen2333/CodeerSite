@@ -1,10 +1,12 @@
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import get_current_user, jwt_required
 from app.services.search_service import SearchService
 
 search_bp = Blueprint("search", __name__)
 
 
 @search_bp.route("", methods=["GET"])
+@jwt_required(optional=True)
 def search():
     """Global full-text search across questions, answers, issues, and projects."""
     q = request.args.get("q", "").strip()
@@ -18,7 +20,12 @@ def search():
     per_page = request.args.get("per_page", 20, type=int)
     per_page = min(per_page, 50)
 
+    user = get_current_user()
     result = SearchService.search(
-        q=q, source_type=source_type, page=page, per_page=per_page
+        q=q,
+        source_type=source_type,
+        page=page,
+        per_page=per_page,
+        user_id=user.id if user else None,
     )
     return jsonify(**result), 200

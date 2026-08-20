@@ -20,11 +20,7 @@ def _get_project_or_404(slug: str):
 
 def _can_access_repo(project, user) -> bool:
     """公开项目任何人可见；私有项目仅成员可见。"""
-    if project.visibility == "public":
-        return True
-    if user is None:
-        return False
-    return ProjectService.get_user_role(project.id, user.id) is not None
+    return ProjectService.can_view(project, user.id if user else None)
 
 
 def _get_read_client(project, user):

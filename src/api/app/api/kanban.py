@@ -29,10 +29,14 @@ def _check_member(project, user):
 
 # -- Columns --
 @kanban_bp.route("/projects/<slug>/kanban/columns", methods=["GET"])
+@jwt_required(optional=True)
 def list_columns(slug):
     project, err = _get_project_or_404(slug)
     if err:
         return err
+    user = get_current_user()
+    if not ProjectService.can_view(project, user.id if user else None):
+        return jsonify(error="Not Found", message="Project not found."), 404
 
     columns = KanbanService.get_columns(project.id)
     return jsonify(

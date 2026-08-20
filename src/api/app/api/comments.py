@@ -1,13 +1,27 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_current_user
 from marshmallow import ValidationError
+from app.extensions import db
+from app.models.issue import Issue
 from app.schemas.comment import CommentCreateSchema, CommentUpdateSchema
 from app.services.comment_service import CommentService
+from app.services.project_service import ProjectService
 
 comments_bp = Blueprint("comments", __name__)
 
 
+def _can_view_target(target_type: str, target_id: str, user) -> bool:
+    """Issue 评论继承所属项目的可见性；公开问答评论不受影响。"""
+    if target_type != "issue":
+        return True
+    issue = db.session.get(Issue, target_id)
+    if issue is None:
+        return False
+    return ProjectService.can_view(issue.project, user.id if user else None)
+
+
 @comments_bp.route("", methods=["GET"])
+@jwt_required(optional=True)
 def list_comments():
     """List comments for a target."""
     target_type = request.args.get("target_type")
@@ -17,6 +31,10 @@ def list_comments():
         return jsonify(
             error="Bad Request", message="target_type and target_id are required."
         ), 400
+
+    user = get_current_user()
+    if not _can_view_target(target_type, target_id, user):
+        return jsonify(error="Not Found", message="Target not found."), 404
 
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
@@ -42,6 +60,9 @@ def create_comment():
         data = CommentCreateSchema().load(request.get_json())
     except ValidationError as e:
         return jsonify(error="Validation Error", messages=e.messages), 422
+
+    if not _can_view_target(data["target_type"], data["target_id"], user):
+        return jsonify(error="Not Found", message="Target not found."), 404
 
     comment = CommentService.create_comment(
         user_id=user.id,

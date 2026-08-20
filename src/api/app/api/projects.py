@@ -16,11 +16,15 @@ def list_projects():
     per_page = request.args.get("per_page", 20, type=int)
     sort = request.args.get("sort", "newest")
     visibility = request.args.get("visibility")
+    user = get_current_user()  # optional=True：未登录为 None
 
     result = ProjectService.get_projects(
-        page=page, per_page=per_page, sort=sort, visibility=visibility
+        page=page,
+        per_page=per_page,
+        sort=sort,
+        visibility=visibility,
+        user_id=user.id if user else None,
     )
-    user = get_current_user()  # optional=True：未登录为 None
     starred_ids = (
         ProjectService.get_starred_project_ids(user.id, [p.id for p in result.items])
         if user
@@ -66,6 +70,8 @@ def get_project(slug):
     if not project:
         return jsonify(error="Not Found", message="Project not found."), 404
     user = get_current_user()
+    if not ProjectService.can_view(project, user.id if user else None):
+        return jsonify(error="Not Found", message="Project not found."), 404
     data = project.to_dict()
     data["starred"] = ProjectService.is_starred(project.id, user.id) if user else False
     return jsonify(project=data), 200
@@ -121,10 +127,14 @@ def delete_project(slug):
 
 # -- Members --
 @projects_bp.route("/<slug>/members", methods=["GET"])
+@jwt_required(optional=True)
 def list_members(slug):
     """List project members."""
     project = ProjectService.get_project(slug=slug)
     if not project:
+        return jsonify(error="Not Found", message="Project not found."), 404
+    user = get_current_user()
+    if not ProjectService.can_view(project, user.id if user else None):
         return jsonify(error="Not Found", message="Project not found."), 404
     members = ProjectService.get_members(project.id)
     return jsonify(members=[m.to_dict() for m in members]), 200
@@ -217,6 +227,8 @@ def star_project(slug):
     user = get_current_user()
     project = ProjectService.get_project(slug=slug)
     if not project:
+        return jsonify(error="Not Found", message="Project not found."), 404
+    if not ProjectService.can_view(project, user.id):
         return jsonify(error="Not Found", message="Project not found."), 404
     starred = ProjectService.toggle_star(project, user.id)
     return jsonify(starred=starred, star_count=project.star_count), 200

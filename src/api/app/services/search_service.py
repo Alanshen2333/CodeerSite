@@ -1,9 +1,11 @@
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import func, or_, literal_column
+from sqlalchemy import and_, func, or_, literal_column, select
 
 from app.extensions import db
+from app.models.project import Project
+from app.models.project_member import ProjectMember
 from app.models.search_document import SearchDocument
 
 logger = logging.getLogger(__name__)
@@ -102,13 +104,48 @@ class SearchService:
 
     @staticmethod
     def search(
-        q: str, source_type: str | None = None, page: int = 1, per_page: int = 20
+        q: str,
+        source_type: str | None = None,
+        page: int = 1,
+        per_page: int = 20,
+        user_id: str | None = None,
     ) -> dict:
         """全文搜索，返回结构与旧版 MongoDB 实现一致。"""
         empty = {"items": [], "total": 0, "page": page, "pages": 0}
 
         try:
             query = SearchDocument.query
+
+            visible_project_ids = select(Project.id).where(
+                Project.visibility == "public"
+            )
+            if user_id:
+                member_project_ids = select(ProjectMember.project_id).where(
+                    ProjectMember.user_id == user_id
+                )
+                visible_project_ids = select(Project.id).where(
+                    or_(
+                        Project.visibility == "public",
+                        Project.id.in_(member_project_ids),
+                    )
+                )
+
+            # 问答内容始终公开；项目及其 Issue 必须落在当前用户可见项目集合中。
+            query = query.filter(
+                or_(
+                    SearchDocument.source_type.notin_(("project", "issue")),
+                    and_(
+                        SearchDocument.source_type == "project",
+                        SearchDocument.doc_id.in_(visible_project_ids),
+                    ),
+                    and_(
+                        SearchDocument.source_type == "issue",
+                        SearchDocument.extra["project_id"]
+                        .as_string()
+                        .in_(visible_project_ids),
+                    ),
+                )
+            )
 
             # source_type 筛选（仅限已知类型，非法值忽略）
             if source_type and source_type in SearchService.INDEXED_TYPES:

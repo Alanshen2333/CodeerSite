@@ -20,11 +20,15 @@ def _get_project_or_404(slug: str):
 
 
 @issues_bp.route("/projects/<slug>/issues", methods=["GET"])
+@jwt_required(optional=True)
 def list_issues(slug):
     """List issues for a project."""
     project, err = _get_project_or_404(slug)
     if err:
         return err
+    user = get_current_user()
+    if not ProjectService.can_view(project, user.id if user else None):
+        return jsonify(error="Not Found", message="Project not found."), 404
 
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
@@ -93,11 +97,15 @@ def create_issue(slug):
 
 
 @issues_bp.route("/projects/<slug>/issues/<int:issue_number>", methods=["GET"])
+@jwt_required(optional=True)
 def get_issue(slug, issue_number):
     """Get a single issue."""
     project, err = _get_project_or_404(slug)
     if err:
         return err
+    user = get_current_user()
+    if not ProjectService.can_view(project, user.id if user else None):
+        return jsonify(error="Not Found", message="Project not found."), 404
 
     issue = IssueService.get_issue(project_id=project.id, issue_number=issue_number)
     if not issue:

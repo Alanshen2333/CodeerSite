@@ -23,10 +23,14 @@ def _check_member(project, user):
 
 
 @milestones_bp.route("/projects/<slug>/milestones", methods=["GET"])
+@jwt_required(optional=True)
 def list_milestones(slug):
     project, err = _get_project_or_404(slug)
     if err:
         return err
+    user = get_current_user()
+    if not ProjectService.can_view(project, user.id if user else None):
+        return jsonify(error="Not Found", message="Project not found."), 404
     milestones = MilestoneService.get_milestones(project.id)
     return jsonify(milestones=[m.to_dict() for m in milestones]), 200
 

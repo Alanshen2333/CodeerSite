@@ -2,7 +2,7 @@ import hashlib
 import re
 from typing import Optional
 
-from sqlalchemy import text
+from sqlalchemy import or_, select, text
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
@@ -82,9 +82,25 @@ class ProjectService:
 
     @staticmethod
     def get_projects(
-        page: int = 1, per_page: int = 20, sort: str = "newest", visibility: str = None
+        page: int = 1,
+        per_page: int = 20,
+        sort: str = "newest",
+        visibility: str = None,
+        user_id: str | None = None,
     ):
-        query = Project.query
+        visible_project_ids = select(Project.id).where(Project.visibility == "public")
+        if user_id:
+            member_project_ids = select(ProjectMember.project_id).where(
+                ProjectMember.user_id == user_id
+            )
+            visible_project_ids = select(Project.id).where(
+                or_(
+                    Project.visibility == "public",
+                    Project.id.in_(member_project_ids),
+                )
+            )
+
+        query = Project.query.filter(Project.id.in_(visible_project_ids))
         if visibility:
             query = query.filter_by(visibility=visibility)
 
@@ -96,6 +112,15 @@ class ProjectService:
             query = query.order_by(Project.created_at.desc())
 
         return query.paginate(page=page, per_page=per_page, error_out=False)
+
+    @staticmethod
+    def can_view(project: Project, user_id: str | None = None) -> bool:
+        """公开项目可匿名查看；私有项目仅成员可查看。"""
+        if project.visibility == "public":
+            return True
+        if not user_id:
+            return False
+        return ProjectService.get_user_role(project.id, user_id) is not None
 
     @staticmethod
     def get_user_projects(user_id: str, page: int = 1, per_page: int = 20):
