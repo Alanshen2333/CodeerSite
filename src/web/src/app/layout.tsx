@@ -4,6 +4,7 @@ import { App } from "antd";
 import ThemeProvider from "@/providers/ThemeProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import Navbar from "@/components/layout/Navbar";
+import SiteFooter from "@/components/layout/SiteFooter";
 import MessageBridge from "@/components/MessageBridge";
 import { themeBootstrapScript } from "@/lib/theme-bootstrap";
 import "./globals.css";
@@ -33,14 +34,15 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-bg-layout text-text antialiased">
+      <body className="flex min-h-screen flex-col bg-bg-layout text-text antialiased">
         <AntdRegistry>
           <ThemeProvider>
-            <App>
+            <App className="flex min-h-screen flex-col">
               <MessageBridge />
               <AuthProvider>
                 <Navbar />
-                <main className="min-h-[calc(100vh-56px)]">{children}</main>
+                <main className="flex-1">{children}</main>
+                <SiteFooter />
               </AuthProvider>
             </App>
           </ThemeProvider>
